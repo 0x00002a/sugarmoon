@@ -1,5 +1,6 @@
 local parse = require("src.parse")
 local lpeg = require("lpeg")
+local ast = require("ast").types
 
 require("busted.runner")()
 
@@ -28,7 +29,7 @@ describe("parser tests", function()
         local input = "function () end"
         local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_function), input)
         assert.are.same({
-            type = "lua fn",
+            type = ast.LUA_FN,
             body = " "
         }, rs[1])
     end)
@@ -36,9 +37,9 @@ describe("parser tests", function()
         local input = "function (test,t2) end"
         local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_function), input)
         assert.are.same({
-            type = "lua fn",
+            type = ast.LUA_FN,
             args = {
-                type = "arg list",
+                type = ast.ARG_LIST,
                 values = { {
                     type = "identword",
                     word = "test",
@@ -59,7 +60,7 @@ describe("parser tests", function()
             assert.are.same({
                 type = "sm:export decl",
                 target = {
-                    type = "lua fn",
+                    type = ast.LUA_FN,
                     body = " "
                 }
             }, rs)
@@ -71,7 +72,7 @@ describe("parser tests", function()
             local input = "x"
             local rs = parse_pat(pat.variable_ns, input)
             assert.are.same({
-                type = 'ident:name',
+                type = ast.IDENT_NAME,
                 value = 'x'
             }, rs)
         end)
@@ -81,13 +82,13 @@ describe("parser tests", function()
             local input = "x = y"
             local rs = lpeg.match(lpeg.Ct(parse.patterns.assignment), input)[1]
             assert.are.same({
-                type = 'expr:assign',
+                type = ast.ASSIGN,
                 lhs = {
-                    type = 'ident:name',
+                    type = ast.IDENT_NAME,
                     value = 'x'
                 },
                 rhs = {
-                    type = 'ident:name',
+                    type = ast.IDENT_NAME,
                     value = 'y'
                 }
             }, rs)
@@ -98,16 +99,16 @@ describe("parser tests", function()
             local input = "{ t = {} }"
             local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_table), input)[1]
             assert.are.same({
-                type = "lua:table",
+                type = ast.LUA_TABLE,
                 values = {
                     {
-                        type = 'expr:assign',
+                        type = ast.ASSIGN,
                         lhs = {
-                            type = 'ident:name',
+                            type = ast.IDENT_NAME,
                             value = 't'
                         },
                         rhs = {
-                            type = 'lua:table',
+                            type = ast.LUA_TABLE,
                             values = {}
                         }
                     }

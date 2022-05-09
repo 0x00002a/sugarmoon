@@ -1,6 +1,7 @@
 local lpeg = require("lpeg")
 lpeg.locale(lpeg)
 
+local ast = require("ast").types
 local P = lpeg.P
 local S = lpeg.S
 local R = lpeg.R
@@ -19,15 +20,6 @@ local function kw(word)
     return space * P(word)
 end
 
-local function ast(name, pat)
-    return pat / function(c)
-        return {
-            name = name,
-            code = c
-        }
-    end
-end
-
 local function void(p)
     return p / 0
 end
@@ -38,14 +30,14 @@ local close_brace = P ")"
 local identchar = R("AZ", "az") + P "_"
 local identword = identchar * ((identchar + R "09") ^ 0) / function(c) return { type = "identword", word = c } end
 local commasep_list = Ct(identword * ((void(space * P "," * space) * identword) ^ 0))
-    / function(c) return { type = "arg list", values = c } end
+    / function(c) return { type = ast.ARG_LIST, values = c } end
 local fn_args = open_brace * commasep_list ^ -1 * close_brace
 local until_p = function(p) return Cg((1 - p) ^ 0) * p end
 local lua_function = Ct(
     void(kw("function"))
     * void(space) * fn_args / 1 * until_p(P "end")) / function(c)
     return {
-        type = "lua fn",
+        type = ast.LUA_FN,
         args = (type(c[1]) == 'table' and c[1]) or nil,
         body = c[2]
     }
@@ -65,7 +57,7 @@ local variable_ns = Ct(identword * (P '.' * identword) ^ 0) / function(c)
         end
     end
     return {
-        type = "ident:name",
+        type = ast.IDENT_NAME,
         value = name
     }
 end
@@ -74,7 +66,7 @@ local function lua_table(assignment)
     return Ct(void(P "{" * space) * (assignment ^ 0) * void(space * P "}"))
         / function(c)
             return {
-                type = "lua:table",
+                type = ast.LUA_TABLE,
                 values = c
             }
         end
@@ -83,7 +75,7 @@ end
 local function assignment(rvalue)
     return Ct(variable_ns * void(space * op "=" * space) * rvalue) / function(c)
         return {
-            type = "expr:assign",
+            type = ast.ASSIGN,
             lhs = c[1],
             rhs = c[2]
         }
