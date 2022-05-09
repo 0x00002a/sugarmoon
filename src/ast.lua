@@ -12,6 +12,7 @@ M.types = {
     NODES = 'ast:nodes',
     ATTR_LOCAL = 'attr:local',
 }
+local ts = M.types
 
 function M.mk_name(ident_str)
     if type(ident_str) == 'table' then
@@ -76,6 +77,62 @@ end
 
 function M.mk_fn_named(name, ...)
     return M.mk_assign(M.mk_name(name), M.mk_fn_annon(...))
+end
+
+function M.children(node)
+    assert(node, debug.traceback("node cannot be nil"))
+    local function keys(v)
+        return function()
+            return node[v]
+        end
+    end
+
+    local function key(v)
+        return function()
+            return { node[v] }
+        end
+    end
+
+    return util.switch(node.type) {
+        [ts.NODES] = keys "values",
+        [ts.EXPORT] = key 'target',
+        [ts.ATTR_LOCAL] = key 'target',
+        [ts.ASSIGN] = function()
+            return { node.lhs, node.rhs }
+        end,
+        ["_"] = function()
+            return nil
+        end
+    }
+
+end
+
+local function check_key(tbl, kh)
+    assert(tbl[kh], "invalid ast node (missing " .. kh .. '): ' .. util.to_str(tbl))
+end
+
+function M.find_first(search, ast)
+    assert(search and #search > 0, "empty search space")
+    local kids = M.children(ast)
+    if not kids then
+        return nil
+    end
+    local target = search[1]
+    local next_targets = util.tbl_tail(search)
+    for _, k in pairs(kids) do
+        check_key(k, 'type')
+        if k.type:gmatch(target) then
+            if not next_targets then
+                return ast
+            else
+                local rs = M.find_first(next_targets, k)
+                if rs then
+                    return rs
+                end
+            end
+        end
+    end
+    return nil
 end
 
 return M

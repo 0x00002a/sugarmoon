@@ -56,7 +56,10 @@ function M.deep_copy(v)
     }
 end
 
-function M.to_str(v)
+function M.to_str(v, indent)
+    indent = indent or 0
+    local next_ids = indent + 4
+    local ids = string.rep(' ', indent)
     return M.switch(type(v)) {
         ['string'] = function()
             return v
@@ -64,11 +67,12 @@ function M.to_str(v)
         ['number'] = function() return tostring(v) end,
         ['nil'] = function() return "nil" end,
         ['table'] = function()
+            local last_ids = (indent > 3 and string.rep(' ', indent - 4)) or ids
             local vs = ""
             for k, val in pairs(v) do
-                vs = vs .. '[' .. M.to_str(k) .. ']' .. ' = ' .. M.to_str(val) .. ',\n'
+                vs = vs .. ids .. '[' .. M.to_str(k) .. ']' .. ' = ' .. M.to_str(val, next_ids) .. ',\n'
             end
-            return '{\n' .. vs .. '}'
+            return '{\n' .. vs .. last_ids .. '}'
         end,
         ['_'] = function()
             error("unhandled type: " .. type(v))

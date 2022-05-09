@@ -28,7 +28,7 @@ local function to_lua(c)
             return c.word
         end,
         [types.LUA_FN] = function()
-            return 'function' .. '(' .. to_lua(c.args) .. ")" .. c.body .. 'end'
+            return 'function' .. '(' .. table.concat(c.args, ',') .. ")" .. c.body .. 'end'
         end,
         [types.EXPORT] = function()
             return to_lua(c.target)
@@ -40,7 +40,7 @@ local function to_lua(c)
             return 'local ' .. to_lua(c.target)
         end,
         ["_"] = function()
-            error("invalid type: " .. c.type)
+            error(debug.traceback("invalid ast node: " .. util.to_str(c)))
         end
     }
     return util.switch(c.type)(lookup)
@@ -52,11 +52,10 @@ local function mk_ctx()
     ctx.__module_name = "__SmModule"
 
     function ctx:add_export(node)
-        return util.switch(node.type) {
-            ["_"] = function()
-                self.__exported[node.name] = true
-            end,
-        }
+        local found = ast.find_first({ types.EXPORT, types.ASSIGN }, node)
+        assert(found, 'invalid node for export: ' .. util.to_str(node))
+        local name = found.lhs
+        self.__exported[name] = true
     end
 
     function ctx:_generate_exports()
