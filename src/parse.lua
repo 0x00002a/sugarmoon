@@ -39,14 +39,14 @@ local identchar = R("AZ", "az") + P "_"
 local identword = identchar * ((identchar + R "09") ^ 0) / function(c) return { type = "identword", word = c } end
 local commasep_list = Ct(identword * ((void(space * P "," * space) * identword) ^ 0))
     / function(c) return { type = "arg list", values = c } end
-local fn_args = open_brace * commasep_list * close_brace
+local fn_args = open_brace * commasep_list ^ -1 * close_brace
 local until_p = function(p) return Cg((1 - p) ^ 0) * p end
 local lua_function = Ct(
-    void(P("function"))
+    void(kw("function"))
     * void(space) * fn_args / 1 * until_p(P "end")) / function(c)
     return {
         type = "lua fn",
-        args = c[1],
+        args = (type(c[1]) == 'table' and c[1]) or nil,
         body = c[2]
     }
 end
@@ -57,7 +57,12 @@ M.patterns = {
     identword = identword,
     fn_args = fn_args,
     lua_function = lua_function,
-    export_decl = C(kw "export" * lua_function)
+    export_decl = (void(kw "export") * void(space) * lua_function) / function(c)
+        return {
+            type = "sm:export decl",
+            target = c
+        }
+    end
 }
 
 return M

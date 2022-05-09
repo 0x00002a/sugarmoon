@@ -20,6 +20,14 @@ describe("parser tests", function()
         local rs = lpeg.match(lpeg.C(parse.patterns.until_p(lpeg.P "end")), input)
         assert.same(input, rs)
     end)
+    it("should parse a lua function with empty args", function()
+        local input = "function () end"
+        local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_function), input)
+        assert.are.same({
+            type = "lua fn",
+            body = " "
+        }, rs[1])
+    end)
     it("should parse a lua function", function()
         local input = "function (test,t2) end"
         local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_function), input)
@@ -39,5 +47,19 @@ describe("parser tests", function()
             },
             body = " "
         }, rs[1])
+    end)
+    describe("export decl", function()
+        it("should parse export function", function()
+            local input = "export function() end"
+            local rs = lpeg.match(lpeg.Ct(parse.patterns.export_decl), input)[1]
+            assert.are.same({
+                type = "sm:export decl",
+                target = {
+                    type = "lua fn",
+                    body = " "
+                }
+            }, rs)
+
+        end)
     end)
 end)
