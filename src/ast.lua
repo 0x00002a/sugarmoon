@@ -5,7 +5,8 @@ M.types = {
     IDENT_NAME = 'ident:name',
     LUA_FN = 'lua:fn',
     ASSIGN = 'expr:assign',
-    ARG_LIST = 'expr:arglist'
+    ARG_LIST = 'expr:arglist',
+    RAW_WORD = 'raw:word'
 }
 
 

@@ -28,7 +28,7 @@ local open_brace = P "("
 local close_brace = P ")"
 
 local identchar = R("AZ", "az") + P "_"
-local identword = identchar * ((identchar + R "09") ^ 0) / function(c) return { type = "identword", word = c } end
+local identword = identchar * ((identchar + R "09") ^ 0) / function(c) return { type = ast.RAW_WORD, word = c } end
 local commasep_list = Ct(identword * ((void(space * P "," * space) * identword) ^ 0))
     / function(c) return { type = ast.ARG_LIST, values = c } end
 local fn_args = open_brace * commasep_list ^ -1 * close_brace
