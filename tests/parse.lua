@@ -3,6 +3,10 @@ local lpeg = require("lpeg")
 
 require("busted.runner")()
 
+local pat = parse.patterns
+local function parse_pat(p, input)
+    return lpeg.match(lpeg.Ct(p), input)[1]
+end
 
 describe("parser tests", function()
     it("should parse function args with multiple commas", function()
@@ -60,6 +64,55 @@ describe("parser tests", function()
                 }
             }, rs)
 
+        end)
+    end)
+    describe("variable name", function()
+        it("should match x", function()
+            local input = "x"
+            local rs = parse_pat(pat.variable_ns, input)
+            assert.are.same({
+                type = 'ident:name',
+                value = 'x'
+            }, rs)
+        end)
+    end)
+    describe("assignment", function()
+        it("should match x = y", function()
+            local input = "x = y"
+            local rs = lpeg.match(lpeg.Ct(parse.patterns.assignment), input)[1]
+            assert.are.same({
+                type = 'expr:assign',
+                lhs = {
+                    type = 'ident:name',
+                    value = 'x'
+                },
+                rhs = {
+                    type = 'ident:name',
+                    value = 'y'
+                }
+            }, rs)
+        end)
+    end)
+    describe("lua table", function()
+        it("should match", function()
+            local input = "{ t = {} }"
+            local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_table), input)[1]
+            assert.are.same({
+                type = "lua:table",
+                values = {
+                    {
+                        type = 'expr:assign',
+                        lhs = {
+                            type = 'ident:name',
+                            value = 't'
+                        },
+                        rhs = {
+                            type = 'lua:table',
+                            values = {}
+                        }
+                    }
+                }
+            }, rs)
         end)
     end)
 end)

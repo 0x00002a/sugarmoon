@@ -50,7 +50,58 @@ local lua_function = Ct(
         body = c[2]
     }
 end
+
+local function op(ch)
+    return P(ch)
+end
+
+local variable_ns = Ct(identword * (P '.' * identword) ^ 0) / function(c)
+    local name = ""
+    for _, n in pairs(c) do
+        if type(n) == 'string' then
+            name = name .. n
+        else
+            name = name .. n.word
+        end
+    end
+    return {
+        type = "ident:name",
+        value = name
+    }
+end
+
+local function lua_table(assignment)
+    return Ct(void(P "{" * space) * (assignment ^ 0) * void(space * P "}"))
+        / function(c)
+            return {
+                type = "lua:table",
+                values = c
+            }
+        end
+end
+
+local function assignment(rvalue)
+    return Ct(variable_ns * void(space * op "=" * space) * rvalue) / function(c)
+        return {
+            type = "expr:assign",
+            lhs = c[1],
+            rhs = c[2]
+        }
+    end
+end
+
+local rvalue = P {
+    "rval",
+    rval = variable_ns + lua_function + lpeg.V "table",
+    assign = assignment(lpeg.V "rval"),
+    table = lua_table(lpeg.V "assign")
+}
+
 M.patterns = {
+    assignment = assignment(rvalue),
+    lua_table = lua_table(assignment(rvalue)),
+    rvalue = rvalue,
+    variable_ns = variable_ns,
     arglist = commasep_list,
     until_p = until_p,
     identchar = identchar,
