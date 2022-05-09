@@ -180,9 +180,18 @@ local function tkn(s)
     return space * P(s) * space
 end
 
+local function mk_chunk(p)
+    local function to_ast(c)
+        print(util.to_str(c))
+    end
+
+    local rs = Ct(p)
+    return rs / to_ast
+end
+
 local complete_grammer = P {
     'chunk',
-    chunk = V "stat" + maybe(P ";") + maybe(V "laststat" + maybe(P ";")),
+    chunk = mk_chunk(V "stat" + maybe(P ";") + maybe(V "laststat" + maybe(P ";"))),
     block = V "chunk",
     stat = (V 'varlist' * space * P '=' * space * V 'explist')
         + (V 'functioncall')
@@ -202,12 +211,29 @@ local complete_grammer = P {
     funcname = ident_name * maybe(identword),
     varlist = sep_by(V 'var', P ',' * space),
     namelist = sep_by(identword, P ',' * space),
+    index = (tkn '[' * V 'exp' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
     explist = ((V 'exp' * P ',' * space) ^ 0) * V 'exp',
-    exp = P 'nil' + P 'false' + P 'true' + number + string_literal() + P "..." + V 'function_'
-        + V 'prefixexp' + V 'tableconstructor' + (V 'exp' * V 'binop' * V 'exp') + (V 'unop' * V 'exp'),
-    prefixexp = V 'var' + V 'functioncall' + (P '(' + V 'exp' + P ')'),
-    functioncall = (V 'prefixexp' * V 'args') + (V 'prefixexp' * P ':' * identword * V 'args'),
-    args = (P '(' * maybe(V 'explist') * P ')') + V 'tableconstructor' + string_literal(),
+    value = tkn 'nil'
+        + tkn 'false'
+        + tkn 'true'
+        + number
+        + string_literal()
+        + tkn "..."
+        + V 'function_'
+        + V 'tableconstructor'
+        + V 'var'
+        + (tkn '(' * V 'exp' * tkn ')'),
+    space = space,
+    binopleft = (V 'binop' * space * V 'value') + P "",
+    exp = V "unop" * V "space" * V "exp" +
+        V 'binopleft' * (V "space" * V "binop" * V "space" * V "exp") ^ -1;
+    --exp = (V 'unop' * V 'exp') + (V 'value' * maybe(space * V 'binop' * space * V 'exp')),
+    prefix = (tkn '(' + V 'exp' + tkn ')') + V 'name',
+    name = identword,
+    suffix = V 'call' + V 'index',
+    call = V 'args' + P ':' * space * V 'name' * space * V 'args',
+    functioncall = V 'prefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'call',
+    args = (tkn '(' * maybe(V 'explist') * tkn ')') + V 'tableconstructor' + string_literal(),
     function_ = P 'function' * V 'funcbody',
     funcbody = fn_args * V 'block' * P 'end',
     parlist = (V 'namelist' * maybe(P "," * space * P '...')) + (P "..."),
@@ -215,7 +241,9 @@ local complete_grammer = P {
     fieldlist = sep_by(V 'field', V 'fieldsep') * maybe(V 'fieldsep'),
     fieldsep = P ',' + P ';',
     binop = binop(),
-    unop = P '~' + P 'not' + P '#'
+    unop = P '~' + P 'not' + P '#',
+    var = (V 'prefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'index') + V 'name',
+    field = (tkn '[' * V 'exp' * tkn ']' * tkn '=' * V 'exp') + (identword * tkn '=' * V 'exp') + V 'exp',
 }
 
 local rvalue = P {
@@ -224,6 +252,7 @@ local rvalue = P {
     assign = assignment(lpeg.V "rval"),
     table = lua_table(lpeg.V "assign")
 }
+M.grammar = complete_grammer
 
 M.patterns = {
     string_literal = string_literal(),
