@@ -128,6 +128,30 @@ local lua_function = mk_lua_fn(function(do_mk)
     return assignment(do_mk(""))
 end)
 
+local function string_literal()
+    local escape_seqs = util.map(function(s) return P '\\' * s end, {
+        P 'a',
+        P 'n',
+        P 'r',
+        P 't',
+        P 'v',
+        P '\\',
+        P '"',
+        P "'",
+        P '\n',
+        R "09" ^ 3,
+    })
+    local valid_ch = lpeg.alnum
+    for _, p in pairs(escape_seqs) do
+        valid_ch = valid_ch + p
+    end
+
+    local dbl = P '"' * valid_ch ^ 0 * P '"'
+    local single = P "'" * valid_ch ^ 0 * P "'"
+    local long = P "[[" * (valid_ch + P '\n') ^ 0 * P "]]"
+    return dbl + single + long
+end
+
 local rvalue = P {
     "rval",
     rval = ident_name + lua_function + lpeg.V "table",
@@ -136,6 +160,7 @@ local rvalue = P {
 }
 
 M.patterns = {
+    string_literal = string_literal(),
     assignment = assignment(rvalue),
     lua_table = lua_table(assignment(rvalue)),
     rvalue = rvalue,
