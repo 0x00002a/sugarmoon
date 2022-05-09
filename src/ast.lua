@@ -6,7 +6,8 @@ M.types = {
     LUA_FN = 'lua:fn',
     ASSIGN = 'expr:assign',
     ARG_LIST = 'expr:arglist',
-    RAW_WORD = 'raw:word'
+    RAW_WORD = 'raw:word',
+    EXPORT = 'decl:export',
 }
 
 

@@ -1,6 +1,7 @@
 local lpeg = require("lpeg")
 lpeg.locale(lpeg)
 
+local util = require("util")
 local ast = require("ast").types
 local P = lpeg.P
 local S = lpeg.S
@@ -36,9 +37,15 @@ local until_p = function(p) return Cg((1 - p) ^ 0) * p end
 local lua_function = Ct(
     void(kw("function"))
     * void(space) * fn_args / 1 * until_p(P "end")) / function(c)
+    local args = nil
+    if type(c[1]) == 'table' then
+        args = util.map(function(v)
+            return v.word
+        end, args)
+    end
     return {
         type = ast.LUA_FN,
-        args = (type(c[1]) == 'table' and c[1]) or nil,
+        args = args or {},
         body = c[2]
     }
 end
@@ -102,7 +109,7 @@ M.patterns = {
     lua_function = lua_function,
     export_decl = (void(kw "export") * void(space) * lua_function) / function(c)
         return {
-            type = "sm:export decl",
+            type = ast.EXPORT,
             target = c
         }
     end

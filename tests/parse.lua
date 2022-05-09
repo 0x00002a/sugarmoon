@@ -30,7 +30,8 @@ describe("parser tests", function()
         local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_function), input)
         assert.are.same({
             type = ast.LUA_FN,
-            body = " "
+            body = " ",
+            args = {},
         }, rs[1])
     end)
     it("should parse a lua function", function()
@@ -40,15 +41,7 @@ describe("parser tests", function()
             type = ast.LUA_FN,
             args = {
                 type = ast.ARG_LIST,
-                values = { {
-                    type = "identword",
-                    word = "test",
-                },
-                {
-                    type = "identword",
-                    word = "t2"
-                }
-                },
+                args = { "test", "t2" },
             },
             body = " "
         }, rs[1])
@@ -58,10 +51,11 @@ describe("parser tests", function()
             local input = "export function() end"
             local rs = lpeg.match(lpeg.Ct(parse.patterns.export_decl), input)[1]
             assert.are.same({
-                type = "sm:export decl",
+                type = ast.EXPORT,
                 target = {
                     type = ast.LUA_FN,
-                    body = " "
+                    body = " ",
+                    args = {},
                 }
             }, rs)
 
