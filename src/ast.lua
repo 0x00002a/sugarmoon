@@ -14,6 +14,10 @@ M.types = {
 }
 
 function M.mk_name(ident_str)
+    if type(ident_str) == 'table' then
+        assert(ident_str.type == M.types.IDENT_NAME)
+        return ident_str
+    end
     local sep = util.tbl_reverse(util.str_split(ident_str, '.'))
     return {
         type = M.types.IDENT_NAME,
@@ -60,6 +64,18 @@ function M.mk_local(target)
         type = M.types.ATTR_LOCAL,
         target = target
     }
+end
+
+function M.mk_fn_annon(args, body)
+    return {
+        type = M.types.LUA_FN,
+        args = args or {},
+        body = body or "",
+    }
+end
+
+function M.mk_fn_named(name, ...)
+    return M.mk_assign(M.mk_name(name), M.mk_fn_annon(...))
 end
 
 return M

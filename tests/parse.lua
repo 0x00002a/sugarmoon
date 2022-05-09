@@ -29,22 +29,12 @@ describe("parser tests", function()
     it("should parse a lua function with empty args", function()
         local input = "function x()end"
         local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_function), input)
-        assert.are.same({
-            type = types.LUA_FN,
-            body = "",
-            args = {},
-            name = ast.mk_name("x")
-        }, rs[1])
+        assert.are.same(ast.mk_fn_named('x'), rs[1])
     end)
     it("should parse a lua function", function()
         local input = "function x(test,t2) end"
         local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_function), input)
-        assert.are.same({
-            type = types.LUA_FN,
-            args = { "test", "t2" },
-            body = " ",
-            name = ast.mk_name("x"),
-        }, rs[1])
+        assert.are.same(ast.mk_fn_named('x', { "test", "t2" }, " "), rs[1])
     end)
     describe("export decl", function()
         it("should parse export function", function()
@@ -52,12 +42,7 @@ describe("parser tests", function()
             local rs = lpeg.match(lpeg.Ct(parse.patterns.export_decl), input)[1]
             assert.are.same({
                 type = types.EXPORT,
-                target = {
-                    type = types.LUA_FN,
-                    body = " ",
-                    args = {},
-                    name = ast.mk_name("x"),
-                }
+                target = ast.mk_fn_named('x', {}, " ")
             }, rs)
 
         end)
@@ -66,10 +51,7 @@ describe("parser tests", function()
         it("should match x", function()
             local input = "x"
             local rs = parse_pat(pat.variable_ns, input)
-            assert.are.same({
-                type = types.IDENT_NAME,
-                base = 'x'
-            }, rs)
+            assert.are.same(ast.mk_name('x'), rs)
         end)
     end)
     describe("assignment", function()

@@ -77,16 +77,15 @@ local until_p = function(p) return Cg((1 - p) ^ 0) * p end
 local function mk_lua_fn(assign)
     local function to_ast(c)
         local args = c.args.values
-        return {
-            type = types.LUA_FN,
-            args = args,
-            body = c.body or "",
-            name = c.name
-        }
+        if c.name then
+            return ast.mk_fn_named(c.name, args, c.body)
+        else
+            return ast.mk_fn_annon(args, c.body)
+        end
     end
 
     local function do_match(name)
-        local name_pat = (not name and ident_name) or lpeg.Cc(name)
+        local name_pat = (not name and ident_name) or (name ~= '' and lpeg.Cc(name)) or lpeg.Cc(nil)
         local pat =
         void(kw("function") * space)
             * (Cg(name_pat, "name"))
@@ -126,10 +125,7 @@ local function assignment(rvalue)
 end
 
 local lua_function = mk_lua_fn(function(do_mk)
-    return assignment(do_mk("")) / function(c)
-        c.rhs.name = c.lhs
-        return c.rhs
-    end
+    return assignment(do_mk(""))
 end)
 
 local rvalue = P {
