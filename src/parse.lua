@@ -8,6 +8,7 @@ local P = lpeg.P
 local S = lpeg.S
 local R = lpeg.R
 local C = lpeg.C
+local V = lpeg.V
 local space = lpeg.space ^ 0
 local Ct = lpeg.Ct
 local Cg = lpeg.Cg
@@ -19,7 +20,11 @@ M.keywords = {}
 
 local function kw(word)
     M.keywords[word] = true
-    return space * P(word)
+    return space * P(word) * space
+end
+
+local function sep_by(p, ch)
+    return p * ((ch * p) ^ 0)
 end
 
 local function void(p)
@@ -52,6 +57,7 @@ local ident_name = Ct(identword * (P '.' * identword) ^ 0) / function(c)
     end
     return ast.mk_name(name)
 end
+
 
 local commasep_list = Ct(identword * ((void(space * P "," * space) * identword) ^ 0))
     / function(c) return { type = types.ARG_LIST, values = c } end
@@ -151,6 +157,66 @@ local function string_literal()
     local long = P "[[" * (valid_ch + P '\n') ^ 0 * P "]]"
     return dbl + single + long
 end
+
+local number = lpeg.digit ^ 1
+
+local function binop()
+    local ops = {
+        '+', '-', '/', '*', '^', '%', '..', '<', '<=', '>', '>=', '==', '~=', 'and', 'or'
+    }
+    local out = nil
+    for _, p in pairs(ops) do
+        p = P(p)
+        if not out then
+            out = p
+        else
+            out = out + p
+        end
+    end
+    return out
+end
+
+local function tkn(s)
+    return space * P(s) * space
+end
+
+local complete_grammer = P {
+    'chunk',
+    chunk = V "stat" + maybe(P ";") + maybe(V "laststat" + maybe(P ";")),
+    block = V "chunk",
+    stat = (V 'varlist' * space * P '=' * space * V 'explist')
+        + (V 'functioncall')
+        + (kw 'do' * space * V 'block' * space * kw 'end')
+        + (kw 'while' * space * V 'exp' * space * kw 'do' * space * V 'block' * space * kw 'end')
+        + (kw 'repeat' * space * V 'block' * space * kw 'until' * space * V 'exp')
+        + (kw 'if' * space * V 'exp' * space * kw 'then' * space * V 'block' * space
+            * ((kw 'elseif' * space * kw 'then' * space * V 'block') ^ 0)
+            * maybe(kw 'else' * V 'block')
+            * kw 'end')
+        + (kw 'for' * identword * op '=' * V 'exp' * tkn ',' * sep_by(V 'exp', tkn ',') * space * kw 'do' * V 'block' * kw 'end')
+        + (kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * V 'block' * kw 'end')
+        + (kw 'function' * V 'funcname' * V 'funcbody')
+        + (kw 'local' * kw 'function' * identword * V 'funcbody')
+        + (kw 'local' * V 'namelist' * maybe(op '=' * V 'explist')),
+    laststat = (P "return" * space * maybe(V 'explist')) + P "break",
+    funcname = ident_name * maybe(identword),
+    varlist = sep_by(V 'var', P ',' * space),
+    namelist = sep_by(identword, P ',' * space),
+    explist = ((V 'exp' * P ',' * space) ^ 0) * V 'exp',
+    exp = P 'nil' + P 'false' + P 'true' + number + string_literal() + P "..." + V 'function_'
+        + V 'prefixexp' + V 'tableconstructor' + (V 'exp' * V 'binop' * V 'exp') + (V 'unop' * V 'exp'),
+    prefixexp = V 'var' + V 'functioncall' + (P '(' + V 'exp' + P ')'),
+    functioncall = (V 'prefixexp' * V 'args') + (V 'prefixexp' * P ':' * identword * V 'args'),
+    args = (P '(' * maybe(V 'explist') * P ')') + V 'tableconstructor' + string_literal(),
+    function_ = P 'function' * V 'funcbody',
+    funcbody = fn_args * V 'block' * P 'end',
+    parlist = (V 'namelist' * maybe(P "," * space * P '...')) + (P "..."),
+    tableconstructor = P '{' * V 'fieldlist' * P '}',
+    fieldlist = sep_by(V 'field', V 'fieldsep') * maybe(V 'fieldsep'),
+    fieldsep = P ',' + P ';',
+    binop = binop(),
+    unop = P '~' + P 'not' + P '#'
+}
 
 local rvalue = P {
     "rval",
