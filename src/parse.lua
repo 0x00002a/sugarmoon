@@ -30,6 +30,11 @@ local function maybe(p)
     return p ^ -1
 end
 
+local function maybe_local(p)
+    local local_p = (kw "local" * space * p) / ast.mk_local
+    return local_p + p
+end
+
 local open_brace = P "("
 local close_brace = P ")"
 
@@ -74,7 +79,7 @@ local function mk_lua_fn(assign)
         local args = c.args.values
         return {
             type = types.LUA_FN,
-            args = args or nil,
+            args = args,
             body = c.body or "",
             name = c.name
         }
@@ -93,7 +98,7 @@ local function mk_lua_fn(assign)
 
     local match_annon = assign(do_match)
     local match_named = do_match()
-    return match_named + match_annon
+    return maybe_local(match_named + match_annon)
 end
 
 local function op(ch)

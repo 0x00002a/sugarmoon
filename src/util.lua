@@ -47,8 +47,8 @@ function M.deep_copy(v)
     return M.switch(type(v)) {
         ['table'] = function()
             local o = {}
-            for _, vs in pairs(v) do
-                table.insert(o, M.deep_copy(vs))
+            for k, vs in pairs(v) do
+                o[k] = M.deep_copy(vs)
             end
             return o
         end,

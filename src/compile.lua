@@ -13,7 +13,8 @@ local function to_lua(c)
             local prefix = ''
             if c.context then
                 local context = util.tbl_reverse(util.deep_copy(c.context))
-                prefix = table.concat(context, ".")
+                table.insert(context, c.base)
+                return table.concat(context, '.')
             end
             return prefix .. c.base
         end,
@@ -33,7 +34,10 @@ local function to_lua(c)
             return to_lua(c.target)
         end,
         [types.NODES] = function()
-            return table.concat(util.map(to_lua, c.values), '')
+            return table.concat(util.map(to_lua, c.values), '\n')
+        end,
+        [types.ATTR_LOCAL] = function()
+            return 'local ' .. to_lua(c.target)
         end,
         ["_"] = function()
             error("invalid type: " .. c.type)
@@ -71,10 +75,11 @@ local function mk_ctx()
     function ctx:wrap(body)
         local modname = ast.mk_name(self.__module_name)
 
-        local header = ast.mk_assign(modname, ast.mk_tbl({}))
+        local header = ast.mk_local(ast.mk_assign(modname, ast.mk_tbl({})))
         local exports = self:_generate_exports()
 
-        body = to_lua(header) .. body .. to_lua(exports)
+        body = to_lua(header) .. '\n' .. body .. '\n' .. to_lua(exports)
+        return body
     end
 
     return ctx
@@ -85,7 +90,12 @@ local function populate_exports(ast, ctx)
 
     util.switch(ast.type) {
         [types.EXPORT] = function()
-            ctx:add_export(ctx.target)
+            ctx:add_export(ast.target)
+        end,
+        [types.NODES] = function()
+            for _, v in pairs(ast.values) do
+                populate_exports(v, ctx)
+            end
         end,
         ["_"] = function() end
     }

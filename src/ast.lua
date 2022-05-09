@@ -10,6 +10,7 @@ M.types = {
     RAW_WORD = 'raw:word',
     EXPORT = 'decl:export',
     NODES = 'ast:nodes',
+    ATTR_LOCAL = 'attr:local',
 }
 
 function M.mk_name(ident_str)
@@ -17,7 +18,7 @@ function M.mk_name(ident_str)
     return {
         type = M.types.IDENT_NAME,
         base = sep[1],
-        context = util.tbl_tail(sep)
+        context = util.tbl_tail(sep) or {},
     }
 end
 
@@ -51,6 +52,13 @@ function M.mk_arglist(values)
     return {
         type = M.types.ARG_LIST,
         values = values
+    }
+end
+
+function M.mk_local(target)
+    return {
+        type = M.types.ATTR_LOCAL,
+        target = target
     }
 end
 

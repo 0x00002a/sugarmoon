@@ -1,5 +1,6 @@
 local compile = require("src.compile")
 local types = require("src.ast").types
+local ast = require("src.ast")
 
 local function compile_matches(expected)
     return function(ast)
@@ -9,26 +10,19 @@ local function compile_matches(expected)
 end
 
 describe("compile tests", function()
-    describe("compile normal lua", function()
-        it("compiles a table", function()
-            local tbl = {
-                type = types.LUA_TABLE,
-                values = {}
-            }
-            compile_matches("{}")(tbl)
-        end)
-    end)
     describe("compile sugarmoon", function()
         it("compiles export", function()
             local fname = "ftest"
-            compile_matches("local __SmMod = {} function " .. fname .. "()end __SmMod." .. fname .. '=' .. fname) {
+            compile_matches("local __SmModule={}\nfunction " .. fname .. "()end\n__SmModule." .. fname .. '=' .. fname) {
                 type = types.EXPORT,
                 target = {
+                    name = ast.mk_name(fname),
                     type = types.LUA_FN,
                     args = {
                         type = types.ARG_LIST,
                         values = {},
-                    }
+                    },
+                    body = ''
                 }
             }
         end)
