@@ -47,4 +47,11 @@ function M.mk_tbl(values)
     }
 end
 
+function M.mk_arglist(values)
+    return {
+        type = M.types.ARG_LIST,
+        values = values
+    }
+end
+
 return M

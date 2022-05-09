@@ -10,13 +10,18 @@ local function to_lua(c)
             return to_lua(c.lhs) .. '=' .. to_lua(c.rhs)
         end,
         [types.IDENT_NAME] = function()
-            return c.value
+            local prefix = ''
+            if c.context then
+                local context = util.tbl_reverse(util.deep_copy(c.context))
+                prefix = table.concat(context, ".")
+            end
+            return prefix .. c.base
         end,
         [types.LUA_TABLE] = function()
-            return "{" .. ((c.values and table.concat(util.map(to_lua, c.values), ',')) or "") .. '}'
+            return "{" .. (table.concat(util.map(to_lua, c.values), ',')) .. '}'
         end,
         [types.ARG_LIST] = function()
-            return util.map(to_lua, c.values):concat(',')
+            return table.concat(util.map(to_lua, c.values), ',')
         end,
         [types.RAW_WORD] = function()
             return c.word
@@ -25,6 +30,7 @@ local function to_lua(c)
             return 'function' .. '(' .. to_lua(c.args) .. ")" .. c.body .. 'end'
         end,
         [types.EXPORT] = function()
+            return to_lua(c.target)
         end,
         [types.NODES] = function()
             return table.concat(util.map(to_lua, c.values), '')

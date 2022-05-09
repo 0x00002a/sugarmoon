@@ -56,7 +56,30 @@ function M.deep_copy(v)
     }
 end
 
+function M.to_str(v)
+    return M.switch(type(v)) {
+        ['string'] = function()
+            return v
+        end,
+        ['number'] = function() return tostring(v) end,
+        ['nil'] = function() return "nil" end,
+        ['table'] = function()
+            local vs = ""
+            for k, val in pairs(v) do
+                vs = vs .. '[' .. M.to_str(k) .. ']' .. ' = ' .. M.to_str(val) .. ',\n'
+            end
+            return '{\n' .. vs .. '}'
+        end,
+        ['_'] = function()
+            error("unhandled type: " .. type(v))
+        end
+    }
+end
+
 function M.map(f, tbl)
+    if not tbl then
+        return nil
+    end
     local o = {}
     for _, v in pairs(tbl) do
         table.insert(o, f(v))

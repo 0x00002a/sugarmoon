@@ -1,6 +1,7 @@
 local parse = require("src.parse")
 local lpeg = require("lpeg")
-local ast = require("ast").types
+local types = require("ast").types
+local ast = require("ast")
 
 require("busted.runner")()
 
@@ -21,41 +22,41 @@ describe("parser tests", function()
         assert.same(input, rs)
     end)
     it("until_p should parse until expr", function()
-        local input = "function (test) end"
+        local input = "function x(test) end"
         local rs = lpeg.match(lpeg.C(parse.patterns.until_p(lpeg.P "end")), input)
         assert.same(input, rs)
     end)
     it("should parse a lua function with empty args", function()
-        local input = "function () end"
+        local input = "function x()end"
         local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_function), input)
         assert.are.same({
-            type = ast.LUA_FN,
-            body = " ",
+            type = types.LUA_FN,
+            body = "",
             args = {},
+            name = ast.mk_name("x")
         }, rs[1])
     end)
     it("should parse a lua function", function()
-        local input = "function (test,t2) end"
+        local input = "function x(test,t2) end"
         local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_function), input)
         assert.are.same({
-            type = ast.LUA_FN,
-            args = {
-                type = ast.ARG_LIST,
-                args = { "test", "t2" },
-            },
-            body = " "
+            type = types.LUA_FN,
+            args = { "test", "t2" },
+            body = " ",
+            name = ast.mk_name("x"),
         }, rs[1])
     end)
     describe("export decl", function()
         it("should parse export function", function()
-            local input = "export function() end"
+            local input = "export function x() end"
             local rs = lpeg.match(lpeg.Ct(parse.patterns.export_decl), input)[1]
             assert.are.same({
-                type = ast.EXPORT,
+                type = types.EXPORT,
                 target = {
-                    type = ast.LUA_FN,
+                    type = types.LUA_FN,
                     body = " ",
                     args = {},
+                    name = ast.mk_name("x"),
                 }
             }, rs)
 
@@ -66,8 +67,8 @@ describe("parser tests", function()
             local input = "x"
             local rs = parse_pat(pat.variable_ns, input)
             assert.are.same({
-                type = ast.IDENT_NAME,
-                value = 'x'
+                type = types.IDENT_NAME,
+                base = 'x'
             }, rs)
         end)
     end)
@@ -76,15 +77,9 @@ describe("parser tests", function()
             local input = "x = y"
             local rs = lpeg.match(lpeg.Ct(parse.patterns.assignment), input)[1]
             assert.are.same({
-                type = ast.ASSIGN,
-                lhs = {
-                    type = ast.IDENT_NAME,
-                    value = 'x'
-                },
-                rhs = {
-                    type = ast.IDENT_NAME,
-                    value = 'y'
-                }
+                type = types.ASSIGN,
+                lhs = ast.mk_name('x'),
+                rhs = ast.mk_name('y'),
             }, rs)
         end)
     end)
@@ -92,22 +87,10 @@ describe("parser tests", function()
         it("should match", function()
             local input = "{ t = {} }"
             local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_table), input)[1]
-            assert.are.same({
-                type = ast.LUA_TABLE,
-                values = {
-                    {
-                        type = ast.ASSIGN,
-                        lhs = {
-                            type = ast.IDENT_NAME,
-                            value = 't'
-                        },
-                        rhs = {
-                            type = ast.LUA_TABLE,
-                            values = {}
-                        }
-                    }
-                }
-            }, rs)
+            assert.are.same(ast.mk_tbl({
+                ['t'] = ast.mk_tbl({})
+            })
+                , rs)
         end)
     end)
 end)

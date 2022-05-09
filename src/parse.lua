@@ -50,22 +50,33 @@ end
 
 local commasep_list = Ct(identword * ((void(space * P "," * space) * identword) ^ 0))
     / function(c) return { type = types.ARG_LIST, values = c } end
-local fn_args = open_brace * commasep_list ^ -1 * close_brace
+local function mk_fn_args()
+    local function to_ast(c)
+        if not c[1] then
+            return ast.mk_arglist({})
+        end
+        local args = {}
+        for _, v in pairs(c[1].values) do
+            table.insert(args, v.word)
+        end
+        return ast.mk_arglist(args)
+    end
+
+    local p = Ct(open_brace * space * commasep_list ^ -1 * space * close_brace) / to_ast
+    return p
+end
+
+local fn_args = mk_fn_args()
 local until_p = function(p) return Cg((1 - p) ^ 0) * p end
 
 local function mk_lua_fn(assign)
     local function to_ast(c)
-        local args = nil
-        if type(c[2]) == 'table' then
-            args = util.map(function(v)
-                return v.word
-            end, args)
-        end
+        local args = c.args.values
         return {
             type = types.LUA_FN,
-            args = args or {},
-            body = c[3],
-            name = c[1]
+            args = args or nil,
+            body = c.body or "",
+            name = c.name
         }
     end
 
@@ -73,15 +84,16 @@ local function mk_lua_fn(assign)
         local name_pat = (not name and ident_name) or lpeg.Cc(name)
         local pat =
         void(kw("function") * space)
-            * (name_pat / 1)
-            * (fn_args / 2)
-            * (until_p(P "end") / 3)
+            * (Cg(name_pat, "name"))
+            * space
+            * (Cg(fn_args, "args"))
+            * (Cg(until_p(P "end"), "body"))
         return Ct(pat) / to_ast
     end
 
     local match_annon = assign(do_match)
     local match_named = do_match()
-    return match_annon + match_named
+    return match_named + match_annon
 end
 
 local function op(ch)
