@@ -89,6 +89,16 @@ t['x'] = f['y'] ]]
 
     end)
 
+
+    it("should parse an expression with braces", function()
+        local input = [[
+local c = (y '' * f())]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_local(ast.mk_assign(ast.mk_raw_word 'c', ast.mk_raw_lua("(y '' * f())")))
+        local actual = parse_gram(input, false)
+        assert.are.same(expected, actual)
+
+    end)
     it("should parse a call and then table deref", function()
         local input = [[
 n = f(x).y
