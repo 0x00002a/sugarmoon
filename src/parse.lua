@@ -276,8 +276,8 @@ local complete_grammer = {
         + C(string_literal()) / to_raw_lua
         + C(tkn "...") / to_raw_lua
         + V 'function_'
-        + C(V 'functioncall') / to_raw_lua
-        + V 'var'
+        + C(V 'functioncall' * maybe(V 'vardot')) / to_raw_lua
+        + (V 'var' * maybe(V 'vardot'))
         + V 'tableconstructor'
         + C(tkn '(' * V 'expv' * tkn ')') / to_raw_lua,
     space = space,
@@ -302,6 +302,8 @@ local complete_grammer = {
         + (ident_name * (tkn '[' * V 'expv' * tkn ']') ^ 1),
     expv = V 'exp' + V 'value',
     unop = P '~' + P 'not' + P '#',
+    prefixexp = V 'var' + V 'functioncall' + (tkn '(' + V 'expv' + tkn ')'),
+    vardot = tkn '.' * V 'var' * maybe(V 'vardot'),
     var = (C(V 'tableindex') / to_raw_lua) + V 'name',
     field = Ct(
         (tkn '[' * Cg(V 'expv', 'lhs') * tkn ']' * tkn '=' * Cg(V 'expv', 'rhs'))

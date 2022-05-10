@@ -89,6 +89,17 @@ t['x'] = f['y'] ]]
 
     end)
 
+    it("should parse a call and then table deref", function()
+        local input = [[
+n = f(x).y
+]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_assign(ast.mk_name 'n', ast.mk_raw_lua('f(x).y'))
+        local actual = parse_gram(input, false)
+        assert.are.same(expected, actual)
+
+    end)
+
     it("should parse a call with table args", function()
         local input = [[
 f(type(h)){ ['x'] = function() return y end }
