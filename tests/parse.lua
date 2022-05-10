@@ -56,6 +56,11 @@ describe("parser tests", function()
             ast.mk_raw_lua("y(2)")
         ), rs)
     end)
+    it("should parse a function with table prefix", function()
+        local input = "function M.x() end"
+        local rs = parse_gram(input)
+        assert.are.same(ast.mk_fn_named('M.x'), rs)
+    end)
     it("should parse multiple functions", function()
         local input = "function x() end\nfunction y() end"
         local rs = parse.parse(input).stmts

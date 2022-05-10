@@ -60,15 +60,14 @@ local identchar = R("AZ", "az") + P "_"
 local identword = identchar * ((identchar + R "09") ^ 0) / function(c) return { type = types.RAW_WORD, word = c } end
 
 local ident_name = Ct(identword * (P '.' * identword) ^ 0) / function(c)
-    local name = ""
-    for _, n in pairs(c) do
-        if type(n) == 'string' then
-            name = name .. n
+    c = util.map(function(v)
+        if type(v) == 'table' then
+            return v.word
         else
-            name = name .. n.word
+            return v
         end
-    end
-    return ast.mk_name(name)
+    end, c)
+    return ast.mk_name { parts = c }
 end
 
 

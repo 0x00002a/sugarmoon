@@ -17,11 +17,12 @@ M.types = {
 local ts = M.types
 
 function M.mk_name(ident_str)
-    if type(ident_str) == 'table' then
+    if type(ident_str) == 'table' and not ident_str.parts then
         assert(ident_str.type == M.types.IDENT_NAME)
         return ident_str
     end
-    local sep = util.tbl_reverse(util.str_split(ident_str, '.'))
+    local parts = (type(ident_str) == 'table' and ident_str.parts) or util.str_split(ident_str, '.')
+    local sep = util.tbl_reverse(parts)
     return {
         type = M.types.IDENT_NAME,
         base = sep[1],
