@@ -11,6 +11,10 @@ local function parse_pat(p, input)
     return lpeg.match(lpeg.Ct(p), input)[1]
 end
 
+local function parse_gram(input)
+    return parse_pat(parse.grammar, input).stmts[1]
+end
+
 describe("parser tests", function()
     it("should parse function args with multiple commas", function()
         local input = "test,t2"
@@ -30,12 +34,18 @@ describe("parser tests", function()
     it("should parse a lua function with empty args", function()
         local input = "function x() end"
         local rs = lpeg.match(lpeg.Ct(parse.grammar), input)
-        assert.are.same(ast.mk_fn_named('x'), rs[1])
+        assert.are.same(ast.mk_fn_named('x'), rs[1].stmts[1])
+    end)
+    it("should parse assignment to a function call", function()
+        local input = "x = y(2)"
+        local rs = parse.parse(input)
+        print(util.to_str(rs))
+        assert.are.same(ast.mk_assign(ast.mk_name('x'), 'x'), rs)
     end)
     it("should parse a lua function", function()
         local input = "function x(test,t2) end"
-        local rs = lpeg.match(lpeg.Ct(parse.grammar), input)
-        assert.are.same(ast.mk_fn_named('x', { "test", "t2" }), rs[1])
+        local rs = parse_gram(input)
+        assert.are.same(ast.mk_fn_named('x', { "test", "t2" }), rs)
     end)
     describe("export decl", function()
         it("should parse export function", function()
@@ -48,11 +58,6 @@ describe("parser tests", function()
 
         end)
     end)
-    describe("blocks", function()
-        it("parses an empty do block", function()
-            assert.are.same(ast.mk_block())
-        end)
-    end)
     describe("variable name", function()
         it("should match x", function()
             local input = "x"
@@ -63,7 +68,7 @@ describe("parser tests", function()
     describe("assignment", function()
         it("should match x = y", function()
             local input = "x = y"
-            local rs = lpeg.match(lpeg.Ct(parse.grammar), input)[1]
+            local rs = parse_gram(input)
             assert.are.same({
                 type = types.ASSIGN,
                 lhs = ast.mk_name('x'),
@@ -74,7 +79,7 @@ describe("parser tests", function()
     describe("lua table", function()
         it("should match", function()
             local input = "x = { t = {} }"
-            local rs = lpeg.match(lpeg.Ct(parse.grammar), input)[1]
+            local rs = parse_gram(input)
             assert.are.same(ast.mk_assign(ast.mk_name('x'), ast.mk_tbl({
                 ['t'] = ast.mk_tbl({})
             }))
