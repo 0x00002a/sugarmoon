@@ -9,6 +9,4 @@ input:close()
 local ast = parse.parse(content)
 local compiled = compile.to_lua(ast)
 
-print(util.to_str(ast))
-print("\n---\n")
 print(compiled)
