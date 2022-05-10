@@ -245,6 +245,8 @@ local function as_local(inner)
     end
 end
 
+local hspace = lpeg.space ^ 0
+
 local complete_grammer = {
     'chunk';
     chunk = Ct(
@@ -258,18 +260,38 @@ local complete_grammer = {
             * ((kw 'elseif' * space * V 'expv' * kw 'then' * space * maybe(V 'block')) ^ 0)
             * maybe(kw 'else' * maybe(V 'block'))
             * kw 'end') / to_raw_lua
-        + C(kw 'for' * space * identword * op '=' * V 'expv' * tkn ',' * sep_by(V 'expv', tkn ',') * space * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
+        + C(kw 'for' * space * V 'name' * op '=' * V 'expv' * tkn ',' * sep_by(V 'expv', tkn ',') * space * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
         + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
         + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcbody') / to_ast_func_named)
-        + Ct(kw 'local' * kw 'function' * Cg(identword, 'name') * V 'funcbody') / as_local(to_ast_func_named)
+        + Ct(kw 'local' * kw 'function' * Cg(V 'name', 'name') * V 'funcbody') / as_local(to_ast_func_named)
         + Ct(kw 'local' * Cg(V 'namelist', 'lhs') * maybe(op '=' * Cg(V 'explist', 'rhs'))) / to_ast_assign_local
         + Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
         + C(V 'functioncall') / to_raw_lua,
 
+    keywords = kw 'and'
+        + kw 'break'
+        + kw 'else'
+        + kw 'elseif'
+        + kw 'end'
+        + kw 'false'
+        + kw 'for'
+        + kw 'function'
+        + kw 'if'
+        + kw 'in'
+        + kw 'local'
+        + kw 'nil'
+        + kw 'not'
+        + kw 'or'
+        + kw 'repeat'
+        + kw 'return'
+        + kw 'then'
+        + kw 'true'
+        + kw 'until'
+        + kw 'while',
     laststat = (kw "return" * maybe(V 'explist')) + kw "break",
-    funcname = ident_name * maybe(identword),
+    funcname = V 'identifier' * maybe(V 'name'),
     varlist = sep_by(space * V 'var', tkn ','),
-    namelist = sep_by(identword, tkn ','),
+    namelist = sep_by(V 'name', tkn ','),
     index = (tkn '[' * V 'expv' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
     explist = sep_by(V 'expv', tkn ','),
     value = C(tkn 'nil') / to_raw_lua
@@ -287,13 +309,13 @@ local complete_grammer = {
     exp = (V "unop" * V "space" * V "expv")
         + C(V 'value' * V 'space' * V 'binopright') / to_raw_lua,
     binopright = V 'binop' * V 'expv' * maybe(V 'binopright'),
-    callprefix = (V 'tableindex' + ident_name),
-    name = identword,
+    callprefix = (V 'tableindex' + V 'identifier'),
+    name = identword - V 'keywords',
     suffix = V 'call' + V 'index',
-    call = (V 'args') + (P ':' * space * V 'name' * space * V 'args'),
+    call = (V 'args') + (P ':' * hspace * V 'name' * hspace * V 'args'),
     functioncall_rec = V 'call' * maybe(V 'functioncall_rec'),
     functioncall = V 'callprefix' * V 'functioncall_rec',
-    args = (tkn '(' * maybe(V 'explist') * tkn ')') + (space * V 'tableconstructor' * space) + (space * string_literal() * space),
+    args = (hspace * P '(' * space * maybe(V 'explist') * tkn ')') + (space * V 'tableconstructor' * space) + (space * string_literal() * space),
     function_ = Ct(kw 'function' * V 'funcbody') / to_ast_func,
     funcbody = Cg(fn_args, 'args') * space * maybe(Cg(V 'block', 'body')) * kw 'end',
     parlist = (V 'namelist' * maybe(P "," * space * P '...')) + (P "..."),
@@ -301,9 +323,9 @@ local complete_grammer = {
     fieldlist = Ct(space / 0 * V 'field' * (space / 0 * V 'fieldsep' / 0 * space / 0 * V 'field') ^ 0) * maybe(V 'fieldsep'),
     fieldsep = tkn ',' + tkn ';',
     binop = binop(),
-    tableindex = (ident_name * (tkn '[' * V 'expv' * tkn ']') ^ 1)
+    identifier = ident_name - V 'keywords',
+    tableindex = (V 'identifier' * (tkn '[' * V 'expv' * tkn ']') ^ 1)
         + (V 'name' * ((tkn '.' * V 'name') ^ 1)),
-
     expv = V 'exp' + V 'value',
     unop = P '-' + P 'not' + P '#',
     prefixexp = V 'var' + V 'functioncall' + (tkn '(' + V 'expv' + tkn ')'),
@@ -311,7 +333,7 @@ local complete_grammer = {
     var = (C(V 'tableindex') / to_raw_lua) + V 'name',
     field = Ct(
         (tkn '[' * Cg(V 'expv', 'lhs') * tkn ']' * tkn '=' * Cg(V 'expv', 'rhs'))
-        + (Cg(identword, 'lhs') * tkn '=' * Cg(V 'expv', 'rhs'))
+        + (Cg(V 'name', 'lhs') * tkn '=' * Cg(V 'expv', 'rhs'))
         + (Cg(V 'expv', 'value'))) / to_ast_field,
 }
 

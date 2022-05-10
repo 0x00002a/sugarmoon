@@ -265,6 +265,19 @@ end
 
     end)
 
+    it("should parse a table with keys", function()
+        local input = [[
+v = {function()
+            return '"' .. '"'
+        end,
+    }
+
+]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local actual = parse_gram(input, false)
+        assert.is_true(actual ~= nil)
+
+    end)
     it("should parse a function with params ...", function()
         local input = [[
 function f(...) end
