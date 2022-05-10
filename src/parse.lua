@@ -9,7 +9,6 @@ local S = lpeg.S
 local R = lpeg.R
 local C = lpeg.C
 local V = lpeg.V
-local space = lpeg.space ^ 0
 local Ct = lpeg.Ct
 local Cg = lpeg.Cg
 local Cc = lpeg.Cc
@@ -18,6 +17,19 @@ local M = {}
 
 
 M.keywords = {}
+
+local until_p = function(p) return Cg((1 - p) ^ 0) * p end
+local comment = (P '--[[' * Cg(until_p(P ']]--'), 'comment'))
+    + (P '--' * Cg(until_p(P '\n'), 'comment'))
+local space = (lpeg.space + P '\n' + comment) ^ 0
+
+local function tkn(s)
+    return space * P(s) * space
+end
+
+local function op(ch)
+    return tkn(ch)
+end
 
 local function kw(word)
     M.keywords[word] = true
@@ -79,7 +91,6 @@ local function mk_fn_args()
 end
 
 local fn_args = mk_fn_args()
-local until_p = function(p) return Cg((1 - p) ^ 0) * p end
 
 local function mk_lua_fn(assign)
     local function to_ast(c)
@@ -105,10 +116,6 @@ local function mk_lua_fn(assign)
     local match_annon = assign(do_match)
     local match_named = do_match()
     return maybe_local(match_named + match_annon)
-end
-
-local function op(ch)
-    return P(ch)
 end
 
 local function lua_table(assignment)
@@ -177,10 +184,6 @@ local function binop()
     return out
 end
 
-local function tkn(s)
-    return space * P(s) * space
-end
-
 local function to_ast_field(c)
     if c.lhs then
         return ast.mk_assign(c.lhs, c.rhs)
@@ -215,7 +218,11 @@ local function to_raw_lua(c)
 end
 
 local function to_ast_chunk(c)
-    return ast.mk_chunk(c.stmts, c.retr)
+    local stmts = {}
+    for _, v in ipairs(c) do
+        table.insert(stmts, v.stmt)
+    end
+    return ast.mk_chunk(stmts, c.retr)
 end
 
 local function to_ast_assign_local(c)
@@ -226,7 +233,7 @@ end
 
 local complete_grammer = {
     'chunk';
-    chunk = Ct(((Cg(V "stat", 'stmts') * maybe(tkn ";")) ^ 1) * space * maybe(Cg(V "laststat", 'retr') * maybe(tkn ";"))) / to_ast_chunk,
+    chunk = Ct((Ct(Cg(V "stat", 'stmt')) * maybe(tkn ";")) ^ 1 * space * maybe(Cg(V "laststat", 'retr') * maybe(tkn ";"))) / to_ast_chunk,
     block = V "chunk",
     stat = Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
         + C(V 'functioncall') / to_raw_lua
@@ -245,7 +252,7 @@ local complete_grammer = {
     laststat = (kw "return" * space * maybe(V 'explist')) + kw "break",
     funcname = ident_name * maybe(identword),
     varlist = sep_by(V 'var', P ',' * space),
-    namelist = sep_by(identword, P ',' * space),
+    namelist = sep_by(identword, tkn ','),
     index = (tkn '[' * V 'exp' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
     explist = sep_by(V 'expv', tkn ','),
     value = tkn 'nil'
@@ -253,12 +260,12 @@ local complete_grammer = {
         + C(tkn 'true') / to_raw_lua
         + C(number) / to_raw_lua
         + C(string_literal()) / to_raw_lua
-        + tkn "..."
+        + C(tkn "...") / to_raw_lua
         + C(V 'functioncall') / to_raw_lua
         + V 'function_'
         + V 'tableconstructor'
         + V 'var'
-        + (tkn '(' * V 'exp' * tkn ')'),
+        + C(tkn '(' * V 'exp' * tkn ')') / to_raw_lua,
     space = space,
     binopleft = (V 'binop' * space * V 'value'),
     exp = (V "unop" * V "space" * V "exp")
@@ -267,9 +274,9 @@ local complete_grammer = {
     prefix = (tkn '(' + V 'exp' + tkn ')') + V 'name',
     name = identword,
     suffix = V 'call' + V 'index',
-    call = V 'args' + P ':' * space * V 'name' * space * V 'args',
+    call = (V 'args') + (P ':' * space * V 'name' * space * V 'args'),
     functioncall = V 'prefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'call',
-    args = (tkn '(' * maybe(V 'explist') * tkn ')') + V 'tableconstructor' + string_literal(),
+    args = (tkn '(' * maybe(V 'explist') * tkn ')') + (V 'tableconstructor') + string_literal(),
     function_ = (kw 'function' * V 'funcbody') / to_ast_func,
     funcbody = Cg(fn_args, 'args') * space * maybe(Cg(V 'block', 'body')) * kw 'end',
     parlist = (V 'namelist' * maybe(P "," * space * P '...')) + (P "..."),
@@ -315,7 +322,8 @@ M.patterns = {
     end
 }
 function M.parse(code)
-    return lpeg.match(Ct(M.grammar), code)[1]
+    local m = lpeg.match(Ct(M.grammar), code)
+    return m[1]
 end
 
 return M

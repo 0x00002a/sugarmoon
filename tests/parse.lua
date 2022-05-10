@@ -36,12 +36,33 @@ describe("parser tests", function()
         local rs = lpeg.match(lpeg.Ct(parse.grammar), input)
         assert.are.same(ast.mk_fn_named('x'), rs[1].stmts[1])
     end)
+
+    it("should parse a string literal", function()
+        local input = 'x = "x"'
+        local rs = parse_gram(input)
+        assert.are.same(ast.mk_assign(ast.mk_name('x'), ast.mk_raw_lua('"x"')), rs)
+    end)
+    it("should parse assignment to a local function call", function()
+        local input = "local x = y(2)"
+        local rs = parse_gram(input)
+        assert.are.same(ast.mk_local(ast.mk_assign(ast.mk_raw_word('x'),
+            ast.mk_raw_lua("y(2)")
+        )), rs)
+    end)
     it("should parse assignment to a function call", function()
         local input = "x = y(2)"
         local rs = parse_gram(input)
         assert.are.same(ast.mk_assign(ast.mk_name('x'),
             ast.mk_raw_lua("y(2)")
         ), rs)
+    end)
+    it("should parse multiple functions", function()
+        local input = "function x() end\nfunction y() end"
+        local rs = parse.parse(input).stmts
+        assert.are.same({
+            ast.mk_fn_named('x'),
+            ast.mk_fn_named('y')
+        }, rs)
     end)
     it("should parse a lua function", function()
         local input = "function x(test,t2) end"
