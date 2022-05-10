@@ -12,6 +12,7 @@ local V = lpeg.V
 local space = lpeg.space ^ 0
 local Ct = lpeg.Ct
 local Cg = lpeg.Cg
+local Cc = lpeg.Cc
 
 local M = {}
 
@@ -180,18 +181,25 @@ local function tkn(s)
     return space * P(s) * space
 end
 
-local function mk_chunk(p)
-    local function to_ast(c)
-        print(util.to_str(c))
+local function to_ast_field(c)
+    if c.lhs then
+        return ast.mk_assign(c.lhs, c.rhs)
+    else
+        error("not implemented")
     end
+end
 
-    local rs = Ct(p)
-    return rs / to_ast
+local function to_ast_func(c)
+    return ast.mk_fn_annon(c.args, c.body)
+end
+
+local function to_ast_func_named(c)
+    return ast.mk_fn_named(c.name, c.args.values, c.body)
 end
 
 local complete_grammer = P {
-    'chunk',
-    chunk = mk_chunk(V "stat" + maybe(P ";") + maybe(V "laststat" + maybe(P ";"))),
+    'chunk';
+    chunk = (V "stat" * maybe(tkn ";")) ^ 1 * space * maybe(V "laststat" * maybe(tkn ";")),
     block = V "chunk",
     stat = (V 'varlist' * space * P '=' * space * V 'explist')
         + (V 'functioncall')
@@ -204,10 +212,10 @@ local complete_grammer = P {
             * kw 'end')
         + (kw 'for' * identword * op '=' * V 'exp' * tkn ',' * sep_by(V 'exp', tkn ',') * space * kw 'do' * V 'block' * kw 'end')
         + (kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * V 'block' * kw 'end')
-        + (kw 'function' * V 'funcname' * V 'funcbody')
+        + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcbody') / to_ast_func_named)
         + (kw 'local' * kw 'function' * identword * V 'funcbody')
         + (kw 'local' * V 'namelist' * maybe(op '=' * V 'explist')),
-    laststat = (P "return" * space * maybe(V 'explist')) + P "break",
+    laststat = (kw "return" * space * maybe(V 'explist')) + kw "break",
     funcname = ident_name * maybe(identword),
     varlist = sep_by(V 'var', P ',' * space),
     namelist = sep_by(identword, P ',' * space),
@@ -224,18 +232,17 @@ local complete_grammer = P {
         + V 'var'
         + (tkn '(' * V 'exp' * tkn ')'),
     space = space,
-    binopleft = (V 'binop' * space * V 'value') + P "",
+    binopleft = (V 'binop' * space * V 'value'),
     exp = V "unop" * V "space" * V "exp" +
         V 'binopleft' * (V "space" * V "binop" * V "space" * V "exp") ^ -1;
-    --exp = (V 'unop' * V 'exp') + (V 'value' * maybe(space * V 'binop' * space * V 'exp')),
     prefix = (tkn '(' + V 'exp' + tkn ')') + V 'name',
     name = identword,
     suffix = V 'call' + V 'index',
     call = V 'args' + P ':' * space * V 'name' * space * V 'args',
     functioncall = V 'prefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'call',
     args = (tkn '(' * maybe(V 'explist') * tkn ')') + V 'tableconstructor' + string_literal(),
-    function_ = P 'function' * V 'funcbody',
-    funcbody = fn_args * V 'block' * P 'end',
+    function_ = (kw 'function' * V 'funcbody') / to_ast_func,
+    funcbody = Cg(fn_args, 'args') * space * maybe(Cg(V 'block', 'body')) * kw 'end',
     parlist = (V 'namelist' * maybe(P "," * space * P '...')) + (P "..."),
     tableconstructor = P '{' * V 'fieldlist' * P '}',
     fieldlist = sep_by(V 'field', V 'fieldsep') * maybe(V 'fieldsep'),
@@ -243,7 +250,9 @@ local complete_grammer = P {
     binop = binop(),
     unop = P '~' + P 'not' + P '#',
     var = (V 'prefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'index') + V 'name',
-    field = (tkn '[' * V 'exp' * tkn ']' * tkn '=' * V 'exp') + (identword * tkn '=' * V 'exp') + V 'exp',
+    field = (
+        (tkn '[' * Cg(V 'exp', 'lhs') * tkn ']' * tkn '=' * Cg(V 'exp', 'rhs'))
+            + (Cg(identword, 'lhs') * tkn '=' * Cg(V 'exp', 'rhs')) + (Cg(V 'exp', 'value'))) / to_ast_field,
 }
 
 local rvalue = P {

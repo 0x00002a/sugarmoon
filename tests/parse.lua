@@ -2,6 +2,7 @@ local parse = require("src.parse")
 local lpeg = require("lpeg")
 local types = require("ast").types
 local ast = require("ast")
+local util = require("util")
 
 require("busted.runner")()
 
@@ -27,14 +28,14 @@ describe("parser tests", function()
         assert.same(input, rs)
     end)
     it("should parse a lua function with empty args", function()
-        local input = "function x()end"
-        local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_function), input)
+        local input = "function x() end"
+        local rs = lpeg.match(lpeg.Ct(parse.grammar), input)
         assert.are.same(ast.mk_fn_named('x'), rs[1])
     end)
     it("should parse a lua function", function()
         local input = "function x(test,t2) end"
-        local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_function), input)
-        assert.are.same(ast.mk_fn_named('x', { "test", "t2" }, " "), rs[1])
+        local rs = lpeg.match(lpeg.Ct(parse.grammar), input)
+        assert.are.same(ast.mk_fn_named('x', { "test", "t2" }), rs[1])
     end)
     describe("export decl", function()
         it("should parse export function", function()

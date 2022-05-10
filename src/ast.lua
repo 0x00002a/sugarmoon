@@ -71,7 +71,7 @@ function M.mk_fn_annon(args, body)
     return {
         type = M.types.LUA_FN,
         args = args or {},
-        body = body or "",
+        body = body,
     }
 end
 
