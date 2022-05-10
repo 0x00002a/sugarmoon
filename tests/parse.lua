@@ -89,6 +89,14 @@ t['x'] = f['y'] ]]
 
     end)
 
+    it("should parse a function with a table return", function()
+        local input = [[
+x(2, { y = 1 })
+        ]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local actual = parse_gram(input, false)
+        assert.are.same(ast.mk_raw_lua(input), actual)
+    end)
     it("should parse an expression with binop then unop constant", function()
         local input = [[
 function m()

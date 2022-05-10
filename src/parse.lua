@@ -277,8 +277,8 @@ local complete_grammer = {
         + C(tkn "...") / to_raw_lua
         + V 'function_'
         + C(V 'functioncall' * maybe(V 'vardot')) / to_raw_lua
-        + (V 'var' * maybe(V 'vardot'))
         + V 'tableconstructor'
+        + (V 'var' * maybe(V 'vardot'))
         + C(tkn '(' * V 'expv' * tkn ')') / to_raw_lua,
     space = space,
     exp = (V "unop" * V "space" * V "expv")
