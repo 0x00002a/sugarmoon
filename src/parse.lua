@@ -263,7 +263,7 @@ local complete_grammer = {
     namelist = sep_by(identword, tkn ','),
     index = (tkn '[' * V 'expv' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
     explist = sep_by(V 'expv', tkn ','),
-    value = tkn 'nil'
+    value = C(tkn 'nil') / to_raw_lua
         + C(tkn 'false') / to_raw_lua
         + C(tkn 'true') / to_raw_lua
         + C(number) / to_raw_lua

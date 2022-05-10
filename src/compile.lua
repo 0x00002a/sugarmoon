@@ -7,6 +7,7 @@ local M = {}
 local function to_lua(c)
     local lookup = {
         [types.ASSIGN] = function()
+            assert(c.lhs and c.rhs, debug.traceback("invalid assign: " .. util.to_str(c)))
             return to_lua(c.lhs) .. '=' .. to_lua(c.rhs)
         end,
         [types.IDENT_NAME] = function()
@@ -29,16 +30,17 @@ local function to_lua(c)
         end,
         [types.LUA_FN] = function()
             local body = (c.body and to_lua(c.body)) or ""
-            return 'function' .. '(' .. table.concat(c.args, ',') .. ")" .. body .. 'end'
+            return 'function' .. '(' .. table.concat(c.args, ',') .. ")\n" .. body .. '\nend'
         end,
         [types.EXPORT] = function()
             return to_lua(c.target)
         end,
         [types.CHUNK] = function()
-            local postfix = (c.retr and "return " .. to_lua(c.retr)) or ""
+            local postfix = (c.retr and ("\nreturn " .. to_lua(c.retr) .. ' ')) or ""
             return table.concat(util.map(to_lua, c.stmts), '\n') .. postfix
         end,
         [types.ATTR_LOCAL] = function()
+            assert(c.target, debug.traceback("invalid attr local: " .. util.to_str(c)))
             return 'local ' .. to_lua(c.target)
         end,
         [types.RAW_LUA] = function()

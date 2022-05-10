@@ -63,7 +63,7 @@ function M.to_str(v, indent)
     local ids = string.rep(' ', indent)
     return M.switch(type(v)) {
         ['string'] = function()
-            return v
+            return '"' .. v .. '"'
         end,
         ['number'] = function() return tostring(v) end,
         ['nil'] = function() return "nil" end,
