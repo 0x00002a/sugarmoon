@@ -79,13 +79,22 @@ local function mk_fn_args()
             return ast.mk_arglist({})
         end
         local args = {}
-        for _, v in pairs(c[1].values) do
-            table.insert(args, v.word)
+        if type(c[1]) == 'table' then
+            for _, v in pairs(c[1].values) do
+                table.insert(args, v.word)
+            end
+            if c[2] and c[2] ~= '' then
+                table.insert(args, c[2])
+            end
+        else
+            args = { c[1] }
         end
         return ast.mk_arglist(args)
     end
 
-    local p = Ct(open_brace * space * commasep_list ^ -1 * space * close_brace) / to_ast
+    local parlist = (commasep_list * C(maybe(tkn ',' * tkn '...'))) + C(tkn '...')
+
+    local p = Ct((tkn '(' * maybe(parlist) * tkn ')')) / to_ast
     return p
 end
 

@@ -265,6 +265,26 @@ end
 
     end)
 
+    it("should parse a function with params ...", function()
+        local input = [[
+function f(...) end
+]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_fn_named('f', { "..." })
+        local actual = parse_gram(input)
+        assert.are.same(expected, actual)
+
+    end)
+    it("should parse a function call with ...", function()
+        local input = [[
+x(function(...) end)
+]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_raw_lua(input)
+        local actual = parse_gram(input)
+        assert.are.same(expected, actual)
+
+    end)
     it("should parse a table function call", function()
         local input = [[
 h['y']()]]
@@ -362,6 +382,7 @@ local function x()
             )
             , rs)
     end)
+
     it("should parse a local function decl", function()
         local input = "local function x() end"
         local rs = parse_gram(input)
@@ -384,17 +405,6 @@ local function x()
         local input = "function x(test,t2) end"
         local rs = parse_gram(input)
         assert.are.same(ast.mk_fn_named('x', { "test", "t2" }), rs)
-    end)
-    describe("export decl", function()
-        it("should parse export function", function()
-            local input = "export function x() end"
-            local rs = lpeg.match(lpeg.Ct(parse.patterns.export_decl), input)[1]
-            assert.are.same({
-                type = types.EXPORT,
-                target = ast.mk_fn_named('x', {}, " ")
-            }, rs)
-
-        end)
     end)
     describe("variable name", function()
         it("should match x", function()
