@@ -84,6 +84,22 @@ t['x'] = f['y'] ]]
         assert.are.same(expected, actual)
 
     end)
+    it("should parse assignment with expr before", function()
+        local input = [[
+do
+    local n
+    t = x
+end]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_block(
+            ast.mk_chunk {
+                ast.mk_local(ast.mk_assign(ast.mk_raw_word 'n', ast.mk_raw_lua('nil'))),
+                ast.mk_assign(ast.mk_name 't', ast.mk_raw_word 'x')
+            })
+        local actual = parse_gram(input)
+        assert.are.same(expected, actual)
+
+    end)
 
     it("should parse for loop", function()
         local input = [[

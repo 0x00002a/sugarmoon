@@ -248,23 +248,24 @@ local complete_grammer = {
         ((Ct(Cg(V "stat", 'stmt')) * maybe(tkn ";")) ^ 1 * space * Ct(maybe((Cg(V "laststat", 'retr')) * maybe(tkn ";"))))
         + Ct(space * Cg(V 'laststat', 'retr') * maybe(tkn ';'))) / to_ast_chunk,
     block = V "chunk",
-    stat = Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
-        + C(V 'functioncall') / to_raw_lua
-        + Ct(kw 'do' * space * maybe(Cg(V 'block', 'inner')) * space * kw 'end') / to_ast_block
-        + C(kw 'while' * space * V 'expv' * space * kw 'do' * space * V 'block' * space * kw 'end') / to_raw_lua
-        + C(kw 'repeat' * space * V 'block' * space * kw 'until' * space * V 'expv') / to_raw_lua
+    stat = Ct(kw 'do' * space * maybe(Cg(V 'block', 'inner')) * space * kw 'end') / to_ast_block
+        + C(kw 'while' * space * V 'expv' * space * kw 'do' * space * maybe(V 'block') * space * kw 'end') / to_raw_lua
+        + C(kw 'repeat' * space * maybe(V 'block') * space * kw 'until' * space * V 'expv') / to_raw_lua
         + C(kw 'if' * space * V 'expv' * kw 'then' * maybe(V 'block')
             * ((kw 'elseif' * space * kw 'then' * space * maybe(V 'block')) ^ 0)
             * maybe(kw 'else' * maybe(V 'block'))
             * kw 'end') / to_raw_lua
         + C(kw 'for' * space * identword * op '=' * V 'expv' * tkn ',' * sep_by(V 'expv', tkn ',') * space * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
-        + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * V 'block' * kw 'end') / to_raw_lua
+        + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
         + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcbody') / to_ast_func_named)
         + Ct(kw 'local' * kw 'function' * Cg(identword, 'name') * V 'funcbody') / as_local(to_ast_func_named)
-        + Ct(kw 'local' * Cg(V 'namelist', 'lhs') * maybe(op '=' * Cg(V 'explist', 'rhs'))) / to_ast_assign_local,
+        + Ct(kw 'local' * Cg(V 'namelist', 'lhs') * maybe(op '=' * Cg(V 'explist', 'rhs'))) / to_ast_assign_local
+        + Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
+        + C(V 'functioncall') / to_raw_lua,
+
     laststat = (kw "return" * maybe(V 'explist')) + kw "break",
     funcname = ident_name * maybe(identword),
-    varlist = sep_by(V 'var', P ',' * space),
+    varlist = sep_by(space * V 'var', tkn ','),
     namelist = sep_by(identword, tkn ','),
     index = (tkn '[' * V 'expv' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
     explist = sep_by(V 'expv', tkn ','),
@@ -276,9 +277,8 @@ local complete_grammer = {
         + C(tkn "...") / to_raw_lua
         + V 'function_'
         + C(V 'functioncall') / to_raw_lua
-        + V 'tableconstructor'
-        + C(V 'tableindex') / to_raw_lua
         + V 'var'
+        + V 'tableconstructor'
         + C(tkn '(' * V 'expv' * tkn ')') / to_raw_lua,
     space = space,
     exp = (V "unop" * V "space" * V "expv")
@@ -297,16 +297,38 @@ local complete_grammer = {
     fieldlist = sep_by(space * Cg(V 'field', 'fields') * space, V 'fieldsep') * maybe(V 'fieldsep'),
     fieldsep = tkn ',' + tkn ';',
     binop = binop(),
-    tableindex = (ident_name * space * (tkn '[' * V 'expv' * tkn ']'))
-        + (V 'name' * (tkn '.' * V 'name') ^ 1),
+    tableindex = (V 'name' * ((tkn '.' * V 'name') ^ 1))
+        + (ident_name * (tkn '[' * V 'expv' * tkn ']') ^ 1),
     expv = V 'exp' + V 'value',
     unop = P '~' + P 'not' + P '#',
-    var = C(V 'tableindex') / to_raw_lua + V 'name',
+    var = (C(V 'tableindex') / to_raw_lua) + V 'name',
     field = Ct(
         (tkn '[' * Cg(V 'expv', 'lhs') * tkn ']' * tkn '=' * Cg(V 'expv', 'rhs'))
         + (Cg(identword, 'lhs') * tkn '=' * Cg(V 'expv', 'rhs'))
         + (Cg(V 'expv', 'value'))) / to_ast_field,
 }
+
+function M.add_debug_trace(grammar)
+    grammar = util.deep_copy(grammar)
+    for k, p in pairs(grammar) do
+        if k ~= 1 then
+            local enter = lpeg.Cmt(lpeg.P(true), function(s, p, ...)
+                print("ENTER: ", k)
+                return p
+            end);
+            local leave = lpeg.Cmt(lpeg.P(true), function(s, p, ...)
+                print("LEAVE: ", k)
+                return p
+            end) * (lpeg.P(p) - lpeg.P(p));
+            grammar[k] = lpeg.Cmt(enter * p + leave, function(s, p, ...)
+                print("--- " .. k .. " ---")
+                print(p .. ":\n" .. s:sub(1, p - 1))
+                return p
+            end)
+        end
+    end
+    return grammar
+end
 
 local rvalue = P {
     "rval",
