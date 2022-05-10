@@ -223,7 +223,7 @@ local function to_ast_chunk(c)
             table.insert(stmts, v.stmt)
         end
     end
-    local retr = c[1] and c[1].retr
+    local retr = c[#c] and c[#c].retr
     return ast.mk_chunk(stmts, retr)
 end
 
@@ -242,7 +242,7 @@ end
 local complete_grammer = {
     'chunk';
     chunk = Ct(
-        ((Ct(Cg(V "stat", 'stmt')) * maybe(tkn ";")) ^ 1 * space * maybe(Ct(Cg(V "laststat", 'retr')) * maybe(tkn ";")))
+        ((Ct(Cg(V "stat", 'stmt')) * maybe(tkn ";")) ^ 1 * space * Ct(maybe((Cg(V "laststat", 'retr')) * maybe(tkn ";"))))
         + Ct(space * Cg(V 'laststat', 'retr') * maybe(tkn ';'))) / to_ast_chunk,
     block = V "chunk",
     stat = Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
@@ -259,7 +259,7 @@ local complete_grammer = {
         + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcbody') / to_ast_func_named)
         + Ct(kw 'local' * kw 'function' * Cg(identword, 'name') * V 'funcbody') / as_local(to_ast_func_named)
         + Ct(kw 'local' * Cg(V 'namelist', 'lhs') * maybe(op '=' * Cg(V 'explist', 'rhs'))) / to_ast_assign_local,
-    laststat = (kw "return" * space * maybe(V 'explist')) + kw "break",
+    laststat = (kw "return" * maybe(V 'explist')) + kw "break",
     funcname = ident_name * maybe(identword),
     varlist = sep_by(V 'var', P ',' * space),
     namelist = sep_by(identword, tkn ','),

@@ -96,6 +96,25 @@ end
         assert.are.same(expected, actual)
 
     end)
+
+    it("should parse a function return with statements", function()
+        local input = [[
+function x(y)
+    local x = 2
+    return h end
+        ]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_fn_named('x', { 'y' },
+            ast.mk_chunk({
+                ast.mk_local(ast.mk_assign(
+                    ast.mk_raw_word 'x',
+                    ast.mk_raw_lua '2'))
+            }, ast.mk_raw_word 'h')
+        )
+        local actual = parse_gram(input)
+        assert.are.same(expected, actual)
+
+    end)
     it("should parse a function return", function()
         local input = [[
 function x()
