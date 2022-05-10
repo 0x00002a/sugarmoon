@@ -250,9 +250,9 @@ local complete_grammer = {
         + Ct(kw 'do' * space * maybe(Cg(V 'block', 'inner')) * space * kw 'end') / to_ast_block
         + C(kw 'while' * space * V 'expv' * space * kw 'do' * space * V 'block' * space * kw 'end') / to_raw_lua
         + C(kw 'repeat' * space * V 'block' * space * kw 'until' * space * V 'expv') / to_raw_lua
-        + C(kw 'if' * space * V 'expv' * space * kw 'then' * space * V 'block' * space
-            * ((kw 'elseif' * space * kw 'then' * space * V 'block') ^ 0)
-            * maybe(kw 'else' * V 'block')
+        + C(kw 'if' * space * V 'expv' * kw 'then' * maybe(V 'block')
+            * ((kw 'elseif' * space * kw 'then' * space * maybe(V 'block')) ^ 0)
+            * maybe(kw 'else' * maybe(V 'block'))
             * kw 'end') / to_raw_lua
         + C(kw 'for' * identword * op '=' * V 'exp' * tkn ',' * sep_by(V 'exp', tkn ',') * space * kw 'do' * V 'block' * kw 'end') / to_raw_lua
         + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * V 'block' * kw 'end') / to_raw_lua
