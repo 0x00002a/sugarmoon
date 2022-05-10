@@ -151,13 +151,17 @@ local function to_ast_tbl(c)
     }
 end
 
+local function single_arglist(values)
+    return #values == 1 and values[1] or ast.mk_arglist(values)
+end
+
 local function to_ast_assign(c)
     local values = {}
     for _, v in pairs(c.lhs) do
         local name = (v.type == types.RAW_WORD and ast.mk_name(v.word)) or v
         table.insert(values, name)
     end
-    return ast.mk_assign(ast.mk_arglist(values), ast.mk_arglist(c.rhs))
+    return ast.mk_assign(single_arglist(values), single_arglist(c.rhs))
 end
 
 local function to_ast_block(c)
@@ -180,8 +184,8 @@ local function to_ast_chunk(c)
 end
 
 local function to_ast_assign_local(c)
-    local lhs = ast.mk_arglist(c.lhs)
-    local rhs = ast.mk_arglist(c.rhs or { ast.mk_raw_lua('nil') })
+    local lhs = single_arglist(c.lhs)
+    local rhs = single_arglist(c.rhs or { ast.mk_raw_lua('nil') })
     return ast.mk_local(ast.mk_assign(lhs, rhs))
 end
 
