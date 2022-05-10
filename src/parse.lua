@@ -142,30 +142,19 @@ local lua_function = mk_lua_fn(function(do_mk)
 end)
 
 local function string_literal()
-    local escape_seqs = util.map(function(s) return P '\\' * s end, {
-        P 'a',
-        P 'n',
-        P 'r',
-        P 't',
-        P 'v',
-        P '\\',
-        P '"',
-        P "'",
-        P '\n',
-        R "09" ^ 3,
-    })
-    local valid_ch = lpeg.alnum
-    for _, p in pairs(escape_seqs) do
-        valid_ch = valid_ch + p
-    end
-    local function match_with(p)
-        return P(p) * ((P("\\" .. p)) + (1 - P(p))) ^ 0 * P(p)
-    end
 
-    local dbl = match_with '"'
-    local single = match_with "'"
-    local long = P "[[" * (valid_ch + P '\n') ^ 0 * P "]]"
-    return dbl + single + long
+    local longstring = P { -- from Roberto Ierusalimschy's lpeg examples
+        V "open" * C((P(1) - V "closeeq") ^ 0) *
+            V "close" / function(o, s) return s end;
+
+        open = "[" * Cg((P "=") ^ 0, "init") * P "[" * (P "\n") ^ -1;
+        close = "]" * C((P "=") ^ 0) * "]";
+        closeeq = lpeg.Cmt(V "close" * lpeg.Cb "init", function(s, i, a, b) return a == b end)
+    }
+    local m = P "\"" * (P "\\" * P(1) + (1 - P "\"")) ^ 0 * P "\"" +
+        P "'" * (P "\\" * P(1) + (1 - P "'")) ^ 0 * P "'" +
+        longstring
+    return m
 end
 
 local number = lpeg.digit ^ 1

@@ -89,6 +89,33 @@ t['x'] = f['y'] ]]
 
     end)
 
+    it("should parse an expression with dbls", function()
+        local input = [[
+v = "\\"
+        ]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_assign(ast.mk_name 'v', ast.mk_raw_lua('"\\\\"'))
+        local actual = parse_gram(input, false)
+        assert.are.same(expected, actual)
+
+    end)
+    it("should parse a table with calls are fields", function()
+        local input = [[
+x = {
+    f "y",
+}
+        ]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local actual = parse_gram(input, false)
+        assert.are.same(ast.mk_assign(ast.mk_name 'x',
+            {
+            type = types.LUA_TABLE,
+            values = {
+                ast.mk_raw_lua('f "y"')
+            }
+        }
+        ), actual)
+    end)
     it("should parse a function with a table return", function()
         local input = [[
 x(2, { y = 1 })
