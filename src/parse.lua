@@ -207,8 +207,8 @@ local function to_ast_tbl(c)
 end
 
 local function to_ast_assign(c)
-    assert(c.lhs.type == types.RAW_WORD)
-    return ast.mk_assign(ast.mk_name(c.lhs.word), c.rhs)
+    local name = (c.lhs.type == types.RAW_WORD and ast.mk_name(c.lhs.word)) or c.lhs
+    return ast.mk_assign(name, c.rhs)
 end
 
 local function to_ast_block(c)
@@ -301,7 +301,7 @@ local complete_grammer = {
         + (V 'name' * (tkn '.' * V 'name') ^ 1),
     expv = V 'exp' + V 'value',
     unop = P '~' + P 'not' + P '#',
-    var = V 'name' + (V 'callprefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'index'),
+    var = C(V 'tableindex') / to_raw_lua + V 'name',
     field = Ct(
         (tkn '[' * Cg(V 'expv', 'lhs') * tkn ']' * tkn '=' * Cg(V 'expv', 'rhs'))
         + (Cg(identword, 'lhs') * tkn '=' * Cg(V 'expv', 'rhs'))

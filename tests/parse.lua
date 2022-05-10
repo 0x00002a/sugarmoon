@@ -76,11 +76,19 @@ end
         assert.are.same(ast.mk_fn_named('M.x', { 'v' }, ast.mk_chunk(ast.mk_local(ast.mk_assign(ast.mk_raw_word 'v', ast.mk_raw_lua '2')))), rs)
     end)
 
+    it("should parse assignment with tables on both sides", function()
+        local input = [[
+t['x'] = f['y'] ]]
+        local expected = ast.mk_assign(ast.mk_raw_lua("t['x'] "), ast.mk_raw_lua("f['y'] "))
+        local actual = parse_gram(input)
+        assert.are.same(expected, actual)
+
+    end)
+
     it("should parse for loop", function()
         local input = [[
-for i = 1, #x do
-end]]
-        local expected = ast.mk_raw_lua("if x then y() end")
+for i = 1, #x do end]]
+        local expected = ast.mk_raw_lua("for i = 1, #x do end")
         local actual = parse_gram(input)
         assert.are.same(expected, actual)
 
