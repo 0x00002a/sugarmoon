@@ -289,7 +289,7 @@ local complete_grammer = {
         + kw 'until'
         + kw 'while',
     laststat = (kw "return" * maybe(V 'explist')) + kw "break",
-    funcname = V 'identifier' * maybe(V 'name'),
+    funcname = V 'identifier' * maybe(P ':' * V 'name'),
     varlist = sep_by(space * V 'var', tkn ','),
     namelist = sep_by(V 'name', tkn ','),
     index = (tkn '[' * V 'expv' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),

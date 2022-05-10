@@ -265,6 +265,16 @@ end
 
     end)
 
+    it("should parse a function with table colon", function()
+        local input = [[
+function f:x()
+end
+]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local actual = parse_gram(input, false)
+        assert.is_true(actual ~= nil)
+
+    end)
     it("should parse a function with indent", function()
         local input = [[
 function f()
