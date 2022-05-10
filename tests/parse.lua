@@ -48,6 +48,11 @@ describe("parser tests", function()
 
         end)
     end)
+    describe("blocks", function()
+        it("parses an empty do block", function()
+            assert.are.same(ast.mk_block())
+        end)
+    end)
     describe("variable name", function()
         it("should match x", function()
             local input = "x"

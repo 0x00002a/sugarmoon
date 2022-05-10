@@ -74,6 +74,9 @@ function M.to_str(v, indent)
             end
             return '{\n' .. vs .. last_ids .. '}'
         end,
+        ['function'] = function()
+            return string.format("<fn: %p>", v)
+        end,
         ['_'] = function()
             error("unhandled type: " .. type(v))
         end
@@ -86,7 +89,9 @@ function M.map(f, tbl)
     end
     local o = {}
     for _, v in pairs(tbl) do
-        table.insert(o, f(v))
+        local rs = f(v)
+        assert(rs, debug.traceback("return value cannot be nil"))
+        table.insert(o, rs)
     end
     return o
 end

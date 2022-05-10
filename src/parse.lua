@@ -206,24 +206,36 @@ local function to_ast_assign(c)
     return ast.mk_assign(ast.mk_name(c.lhs.word), c.rhs)
 end
 
+local function to_ast_block(c)
+    return ast.mk_block(c.inner)
+end
+
+local function to_raw_lua(c)
+    return ast.mk_raw_lua(c)
+end
+
+local function to_ast_chunk(c)
+    return ast.mk_chunk(c.stmts, c.retr)
+end
+
 local complete_grammer = {
     'chunk';
-    chunk = ((V "stat" * maybe(tkn ";")) ^ 1) * space * maybe(V "laststat" * maybe(tkn ";")),
+    chunk = Ct(((Cg(V "stat", 'stmts') * maybe(tkn ";")) ^ 1) * space * maybe(Cg(V "laststat", 'retr') * maybe(tkn ";"))) / to_ast_chunk,
     block = V "chunk",
     stat = Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
-        + (V 'functioncall')
-        + (kw 'do' * space * V 'block' * space * kw 'end')
-        + (kw 'while' * space * V 'exp' * space * kw 'do' * space * V 'block' * space * kw 'end')
-        + (kw 'repeat' * space * V 'block' * space * kw 'until' * space * V 'exp')
-        + (kw 'if' * space * V 'exp' * space * kw 'then' * space * V 'block' * space
+        + C(V 'functioncall') / to_raw_lua
+        + Ct(kw 'do' * space * Cg(V 'block', 'inner') * space * kw 'end') / to_ast_block
+        + C(kw 'while' * space * V 'expv' * space * kw 'do' * space * V 'block' * space * kw 'end') / to_raw_lua
+        + C(kw 'repeat' * space * V 'block' * space * kw 'until' * space * V 'expv') / to_raw_lua
+        + C(kw 'if' * space * V 'expv' * space * kw 'then' * space * V 'block' * space
             * ((kw 'elseif' * space * kw 'then' * space * V 'block') ^ 0)
             * maybe(kw 'else' * V 'block')
-            * kw 'end')
-        + (kw 'for' * identword * op '=' * V 'exp' * tkn ',' * sep_by(V 'exp', tkn ',') * space * kw 'do' * V 'block' * kw 'end')
-        + (kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * V 'block' * kw 'end')
+            * kw 'end') / to_raw_lua
+        + C(kw 'for' * identword * op '=' * V 'exp' * tkn ',' * sep_by(V 'exp', tkn ',') * space * kw 'do' * V 'block' * kw 'end') / to_raw_lua
+        + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * V 'block' * kw 'end') / to_raw_lua
         + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcbody') / to_ast_func_named)
         + (kw 'local' * kw 'function' * identword * V 'funcbody')
-        + (kw 'local' * V 'namelist' * maybe(op '=' * V 'explist')),
+        + C(kw 'local' * V 'namelist' * maybe(op '=' * V 'explist')) / to_raw_lua,
     laststat = (kw "return" * space * maybe(V 'explist')) + kw "break",
     funcname = ident_name * maybe(identword),
     varlist = sep_by(V 'var', P ',' * space),
@@ -231,10 +243,10 @@ local complete_grammer = {
     index = (tkn '[' * V 'exp' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
     explist = sep_by(V 'exp' + V 'value', tkn ','),
     value = tkn 'nil'
-        + tkn 'false'
-        + tkn 'true'
-        + number
-        + string_literal()
+        + C(tkn 'false') / to_raw_lua
+        + C(tkn 'true') / to_raw_lua
+        + C(number) / to_raw_lua
+        + C(string_literal()) / to_raw_lua
         + tkn "..."
         + V 'function_'
         + V 'tableconstructor'
@@ -294,5 +306,8 @@ M.patterns = {
         }
     end
 }
+function M.parse(code)
+    return lpeg.match(Ct(M.grammar), code)[1]
+end
 
 return M

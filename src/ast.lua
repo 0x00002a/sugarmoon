@@ -9,8 +9,10 @@ M.types = {
     ARG_LIST = 'expr:arglist',
     RAW_WORD = 'raw:word',
     EXPORT = 'decl:export',
-    NODES = 'ast:nodes',
+    CHUNK = 'expr:chunk',
     ATTR_LOCAL = 'attr:local',
+    BLOCK = 'expr:block',
+    RAW_LUA = 'raw:lua-code'
 }
 local ts = M.types
 
@@ -27,11 +29,31 @@ function M.mk_name(ident_str)
     }
 end
 
-function M.mk_nodes(xs)
-    return {
-        type = M.types.NODES,
-        values = xs
+function M.mk_chunk(xs, retr)
+    if xs[1] == nil then
+        xs = { xs }
+    end
+    for k, v in pairs(xs) do
+        if type(v) == 'string' then
+            xs[k] = M.mk_raw_lua(v)
+        end
+    end
+    local c = {
+        type = M.types.CHUNK,
+        stmts = xs,
+        retr = retr,
     }
+    function c:prepend(stmt)
+        table.insert(self.stmts, 1, stmt)
+        return self
+    end
+
+    function c:append(stmt)
+        table.insert(self.stmts, stmt)
+        return self
+    end
+
+    return c
 end
 
 function M.mk_assign(lhs, rhs)
@@ -46,6 +68,20 @@ function M.mk_raw_word(word)
     return {
         type = ts.RAW_WORD,
         word = word,
+    }
+end
+
+function M.mk_block(stmts)
+    return {
+        type = ts.BLOCK,
+        inner = stmts,
+    }
+end
+
+function M.mk_raw_lua(code)
+    return {
+        type = ts.RAW_LUA,
+        code = code,
     }
 end
 
@@ -105,7 +141,7 @@ function M.children(node)
     end
 
     return util.switch(node.type) {
-        [ts.NODES] = keys "values",
+        [ts.CHUNK] = keys "values",
         [ts.EXPORT] = key 'target',
         [ts.ATTR_LOCAL] = key 'target',
         [ts.ASSIGN] = function()

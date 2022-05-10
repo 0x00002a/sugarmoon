@@ -28,21 +28,31 @@ local function to_lua(c)
             return c.word
         end,
         [types.LUA_FN] = function()
-            return 'function' .. '(' .. table.concat(c.args, ',') .. ")" .. c.body .. 'end'
+            local body = (c.body and to_lua(c.body)) or ""
+            return 'function' .. '(' .. table.concat(c.args, ',') .. ")" .. body .. 'end'
         end,
         [types.EXPORT] = function()
             return to_lua(c.target)
         end,
-        [types.NODES] = function()
-            return table.concat(util.map(to_lua, c.values), '\n')
+        [types.CHUNK] = function()
+            local postfix = (c.retr and "return " .. to_lua(c.retr)) or ""
+            return table.concat(util.map(to_lua, c.stmts), '\n') .. postfix
         end,
         [types.ATTR_LOCAL] = function()
             return 'local ' .. to_lua(c.target)
+        end,
+        [types.RAW_LUA] = function()
+            return c.code
         end,
         ["_"] = function()
             error(debug.traceback("invalid ast node: " .. util.to_str(c)))
         end
     }
+    assert(type(c) == 'table', debug.traceback("invalid node type: " .. util.to_str(c)))
+    if not next(c) then
+        return ""
+    end
+    assert(c.type, debug.traceback("type cannot be nil"))
     return util.switch(c.type)(lookup)
 end
 
@@ -68,17 +78,19 @@ local function mk_ctx()
                 table.insert(values, ast.mk_assign(lhs, name))
             end
         end
-        return ast.mk_nodes(values)
+        return ast.mk_chunk(values)
     end
 
-    function ctx:wrap(body)
+    function ctx:wrap(tast)
         local modname = ast.mk_name(self.__module_name)
+        tast = ast.mk_chunk(tast, modname)
 
         local header = ast.mk_local(ast.mk_assign(modname, ast.mk_tbl({})))
+        tast:prepend(header)
         local exports = self:_generate_exports()
+        tast:append(exports)
 
-        body = to_lua(header) .. '\n' .. body .. '\n' .. to_lua(exports)
-        return body
+        return tast
     end
 
     return ctx
@@ -91,8 +103,8 @@ local function populate_exports(ast, ctx)
         [types.EXPORT] = function()
             ctx:add_export(ast.target)
         end,
-        [types.NODES] = function()
-            for _, v in pairs(ast.values) do
+        [types.CHUNK] = function()
+            for _, v in pairs(ast.stmts) do
                 populate_exports(v, ctx)
             end
         end,
@@ -101,10 +113,11 @@ local function populate_exports(ast, ctx)
 end
 
 function M.to_lua(c)
-    local content = to_lua(c)
     local ctx = mk_ctx()
     populate_exports(c, ctx)
-    return ctx:wrap(content)
+    c = ctx:wrap(c)
+    local content = to_lua(c)
+    return content
 end
 
 return M
