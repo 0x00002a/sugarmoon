@@ -30,6 +30,16 @@ function M.mk_name(ident_str)
     }
 end
 
+function M.chunk_prepend(chunk, stmt)
+    table.insert(chunk.stmts, 1, stmt)
+    return chunk
+end
+
+function M.chunk_append(chunk, stmt)
+    table.insert(chunk.stmts, stmt)
+    return chunk
+end
+
 function M.mk_chunk(xs, retr)
     if xs[1] == nil then
         xs = { xs }
@@ -46,15 +56,6 @@ function M.mk_chunk(xs, retr)
         stmts = xs,
         retr = retr,
     }
-    function c:prepend(stmt)
-        table.insert(self.stmts, 1, stmt)
-        return self
-    end
-
-    function c:append(stmt)
-        table.insert(self.stmts, stmt)
-        return self
-    end
 
     return c
 end

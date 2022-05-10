@@ -56,6 +56,38 @@ describe("parser tests", function()
             ast.mk_raw_lua("y(2)")
         ), rs)
     end)
+
+    it("should parse a function with table prefix and args", function()
+        local input = [[
+local x = y
+local H = {}
+function M.x(v)
+    local v = 2
+end
+]]
+        local rs = parse.parse(input).stmts[3]
+        assert.are.same(ast.mk_fn_named('M.x', { 'v' }, ast.mk_chunk(ast.mk_local(ast.mk_assign(ast.mk_raw_word 'v', ast.mk_raw_lua '2')))), rs)
+    end)
+    it("should parse a function return", function()
+        local input = [[
+function x()
+    return function()
+        x()
+    end
+end
+        ]]
+        local expected = ast.mk_fn_named('x', {},
+            ast.mk_chunk({},
+                ast.mk_fn_annon({},
+                    ast.mk_chunk(
+                        ast.mk_raw_lua("x()")
+                    )
+                )
+            )
+        )
+        assert.are.same(expected, parse_gram(input))
+
+    end)
     it("should parse a function with table prefix", function()
         local input = "function M.x() end"
         local rs = parse_gram(input)

@@ -321,7 +321,7 @@ M.patterns = {
     end
 }
 function M.parse(code)
-    local m = lpeg.match(Ct(M.grammar), code)
+    local m = lpeg.match(Ct(M.grammar) * P(0), code)
     return m[1]
 end
 

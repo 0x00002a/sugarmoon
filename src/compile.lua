@@ -86,9 +86,9 @@ local function mk_ctx()
         tast = ast.mk_chunk(tast, modname)
 
         local header = ast.mk_local(ast.mk_assign(modname, ast.mk_tbl({})))
-        tast:prepend(header)
+        ast.chunk_prepend(tast, header)
         local exports = self:_generate_exports()
-        tast:append(exports)
+        ast.chunk_append(tast, exports)
 
         return tast
     end
