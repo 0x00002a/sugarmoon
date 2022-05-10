@@ -36,6 +36,8 @@ function M.mk_chunk(xs, retr)
     for k, v in pairs(xs) do
         if type(v) == 'string' then
             xs[k] = M.mk_raw_lua(v)
+        elseif type(v) == 'number' then
+            xs[k] = M.mk_raw_lua(tostring(v))
         end
     end
     local c = {

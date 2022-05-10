@@ -38,9 +38,10 @@ describe("parser tests", function()
     end)
     it("should parse assignment to a function call", function()
         local input = "x = y(2)"
-        local rs = parse.parse(input)
-        print(util.to_str(rs))
-        assert.are.same(ast.mk_assign(ast.mk_name('x'), 'x'), rs)
+        local rs = parse_gram(input)
+        assert.are.same(ast.mk_assign(ast.mk_name('x'),
+            ast.mk_raw_lua("y(2)")
+        ), rs)
     end)
     it("should parse a lua function", function()
         local input = "function x(test,t2) end"

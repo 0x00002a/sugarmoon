@@ -218,6 +218,12 @@ local function to_ast_chunk(c)
     return ast.mk_chunk(c.stmts, c.retr)
 end
 
+local function to_ast_assign_local(c)
+    local lhs = c.lhs
+    local rhs = c.rhs or ast.mk_raw_lua('nil')
+    return ast.mk_local(ast.mk_assign(lhs, rhs))
+end
+
 local complete_grammer = {
     'chunk';
     chunk = Ct(((Cg(V "stat", 'stmts') * maybe(tkn ";")) ^ 1) * space * maybe(Cg(V "laststat", 'retr') * maybe(tkn ";"))) / to_ast_chunk,
@@ -235,27 +241,29 @@ local complete_grammer = {
         + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * V 'block' * kw 'end') / to_raw_lua
         + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcbody') / to_ast_func_named)
         + (kw 'local' * kw 'function' * identword * V 'funcbody')
-        + C(kw 'local' * V 'namelist' * maybe(op '=' * V 'explist')) / to_raw_lua,
+        + Ct(kw 'local' * Cg(V 'namelist', 'lhs') * maybe(op '=' * Cg(V 'explist', 'rhs'))) / to_ast_assign_local,
     laststat = (kw "return" * space * maybe(V 'explist')) + kw "break",
     funcname = ident_name * maybe(identword),
     varlist = sep_by(V 'var', P ',' * space),
     namelist = sep_by(identword, P ',' * space),
     index = (tkn '[' * V 'exp' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
-    explist = sep_by(V 'exp' + V 'value', tkn ','),
+    explist = sep_by(V 'expv', tkn ','),
     value = tkn 'nil'
         + C(tkn 'false') / to_raw_lua
         + C(tkn 'true') / to_raw_lua
         + C(number) / to_raw_lua
         + C(string_literal()) / to_raw_lua
         + tkn "..."
+        + C(V 'functioncall') / to_raw_lua
         + V 'function_'
         + V 'tableconstructor'
         + V 'var'
         + (tkn '(' * V 'exp' * tkn ')'),
     space = space,
     binopleft = (V 'binop' * space * V 'value'),
-    exp = (V "unop" * V "space" * V "exp") +
-        V 'binopleft' * (V "space" * V "binop" * V "space" * V "exp") ^ -1;
+    exp = (V "unop" * V "space" * V "exp")
+        + (V 'binopleft' * (V "space" * V "binop" * V "space" * V "exp") ^ -1)
+    ,
     prefix = (tkn '(' + V 'exp' + tkn ')') + V 'name',
     name = identword,
     suffix = V 'call' + V 'index',
