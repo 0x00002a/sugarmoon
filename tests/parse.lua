@@ -11,8 +11,12 @@ local function parse_pat(p, input)
     return lpeg.match(lpeg.Ct(p), input)[1]
 end
 
-local function parse_gram(input)
-    return parse_pat(parse.grammar, input).stmts[1]
+local function parse_gram(input, debug)
+    if not debug then
+        debug = false
+    end
+    local grammar = debug and parse.add_debug_trace(parse.grammar_raw) or parse.grammar
+    return parse_pat(lpeg.P(grammar), input).stmts[1]
 end
 
 describe("parser tests", function()
@@ -81,6 +85,17 @@ end
 t['x'] = f['y'] ]]
         local expected = ast.mk_assign(ast.mk_raw_lua("t['x'] "), ast.mk_raw_lua("f['y'] "))
         local actual = parse_gram(input)
+        assert.are.same(expected, actual)
+
+    end)
+
+    it("should parse a call with table args", function()
+        local input = [[
+f(type(h)){ ['x'] = function() return y end }
+]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_raw_lua(input)
+        local actual = parse_gram(input, false)
         assert.are.same(expected, actual)
 
     end)

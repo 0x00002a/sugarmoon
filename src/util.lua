@@ -1,17 +1,6 @@
 local lpeg = require("lpeg")
 local M = {}
 
-function M._switch(v)
-    return function(lookup)
-        local k = lookup[v]
-        if k == nil then
-            return lookup['_']()
-        end
-        --else
-        --return k()
-        --end
-    end
-end
 
 function M.switch(v)
     return function(lookup)
