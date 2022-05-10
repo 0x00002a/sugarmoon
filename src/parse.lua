@@ -186,9 +186,9 @@ end
 
 local function to_ast_field(c)
     if c.lhs then
-        return ast.mk_assign(c.lhs, c.rhs)
+        return ast.mk_tbl_field(c.lhs, c.rhs)
     elseif c.value then
-        return c.value
+        return ast.mk_tbl_field(c.value)
     else
         error("not implemented")
     end

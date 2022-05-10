@@ -12,7 +12,8 @@ M.types = {
     CHUNK = 'expr:chunk',
     ATTR_LOCAL = 'attr:local',
     BLOCK = 'expr:block',
-    RAW_LUA = 'raw:lua-code'
+    RAW_LUA = 'raw:lua-code',
+    FIELD = 'ast:table-field',
 }
 local ts = M.types
 
@@ -89,13 +90,25 @@ function M.mk_raw_lua(code)
     }
 end
 
+function M.mk_tbl_field(k, v)
+    if v == nil then
+        v = k
+        k = nil
+    end
+    return {
+        type = ts.FIELD,
+        key = k,
+        value = v,
+    }
+end
+
 function M.mk_tbl(values)
     local ast_values = {}
     for k, v in pairs(values) do
-        if not v.type or v.type ~= ts.ASSIGN then
-            table.insert(ast_values, M.mk_assign(M.mk_raw_word(k), v))
-        else
+        if type(v) == 'table' and v.type and v.type == ts.FIELD then
             table.insert(ast_values, v)
+        else
+            table.insert(ast_values, M.mk_tbl_field(k, v))
         end
     end
     return {

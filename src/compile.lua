@@ -19,8 +19,25 @@ local function to_lua(c)
             end
             return prefix .. c.base
         end,
+        [types.FIELD] = function()
+            local function wrap_key(k)
+                if k.type == types.RAW_WORD or k.type == types.RAW_LUA then
+                    return to_lua(k)
+                else
+                    return '[' .. to_lua(k) .. ']'
+                end
+            end
+
+            local prefix = c.key and (wrap_key(c.key) .. ' = ') or ''
+            local v = to_lua(c.value)
+            local suffix = v
+            if v:sub(-1) ~= ',' then
+                suffix = suffix .. ','
+            end
+            return prefix .. suffix
+        end,
         [types.LUA_TABLE] = function()
-            return "{" .. (table.concat(util.map(to_lua, c.values), ',')) .. '}'
+            return "{" .. (table.concat(util.map(to_lua, c.values), '\n')) .. '}'
         end,
         [types.ARG_LIST] = function()
             return table.concat(util.map(to_lua, c.values), ',')

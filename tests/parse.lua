@@ -94,13 +94,11 @@ t['x'] = f['y'] ]]
 v = { 'a', 'b' }
         ]]
         assert:set_parameter('TableFormatLevel', -1)
-        local expected = ast.mk_assign(ast.mk_name 'v', {
-            type = types.LUA_TABLE,
-            values = {
-                ast.mk_raw_lua("'a'"),
-                ast.mk_raw_lua("'b'")
-            }
-        })
+        local expected = ast.mk_assign(ast.mk_name 'v',
+            ast.mk_tbl {
+                ast.mk_tbl_field(ast.mk_raw_lua("'a'")),
+                ast.mk_tbl_field(ast.mk_raw_lua("'b'")),
+            })
         local actual = parse_gram(input, false)
         assert.are.same(expected, actual)
 
@@ -138,12 +136,9 @@ x = {
         assert:set_parameter('TableFormatLevel', -1)
         local actual = parse_gram(input, false)
         assert.are.same(ast.mk_assign(ast.mk_name 'x',
-            {
-            type = types.LUA_TABLE,
-            values = {
-                ast.mk_raw_lua('f "y"')
+            ast.mk_tbl {
+                ast.mk_tbl_field(ast.mk_raw_lua('f "y"'))
             }
-        }
         ), actual)
     end)
     it("should parse a function with a table return", function()
@@ -464,7 +459,7 @@ local function x()
             local input = "x = { t = {} }"
             local rs = parse_gram(input)
             assert.are.same(ast.mk_assign(ast.mk_name('x'), ast.mk_tbl({
-                ['t'] = ast.mk_tbl({})
+                [ast.mk_raw_word 't'] = ast.mk_tbl({})
             }))
                 , rs)
         end)
