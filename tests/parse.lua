@@ -89,6 +89,20 @@ t['x'] = f['y'] ]]
 
     end)
 
+    it("should parse an expression with elseif", function()
+        local input = [[
+if c.lhs then
+    return y
+elseif c then
+    return x
+end
+        ]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_raw_lua(input)
+        local actual = parse_gram(input, false)
+        assert.are.same(expected, actual)
+
+    end)
     it("should parse an expression with dbls", function()
         local input = [[
 v = "\\"

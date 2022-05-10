@@ -246,7 +246,7 @@ local complete_grammer = {
         + C(kw 'while' * space * V 'expv' * space * kw 'do' * space * maybe(V 'block') * space * kw 'end') / to_raw_lua
         + C(kw 'repeat' * space * maybe(V 'block') * space * kw 'until' * space * V 'expv') / to_raw_lua
         + C(kw 'if' * space * V 'expv' * kw 'then' * maybe(V 'block')
-            * ((kw 'elseif' * space * kw 'then' * space * maybe(V 'block')) ^ 0)
+            * ((kw 'elseif' * space * V 'expv' * kw 'then' * space * maybe(V 'block')) ^ 0)
             * maybe(kw 'else' * maybe(V 'block'))
             * kw 'end') / to_raw_lua
         + C(kw 'for' * space * identword * op '=' * V 'expv' * tkn ',' * sep_by(V 'expv', tkn ',') * space * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
