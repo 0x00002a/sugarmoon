@@ -257,7 +257,7 @@ local complete_grammer = {
             * ((kw 'elseif' * space * kw 'then' * space * maybe(V 'block')) ^ 0)
             * maybe(kw 'else' * maybe(V 'block'))
             * kw 'end') / to_raw_lua
-        + C(kw 'for' * identword * op '=' * V 'exp' * tkn ',' * sep_by(V 'exp', tkn ',') * space * kw 'do' * V 'block' * kw 'end') / to_raw_lua
+        + C(kw 'for' * space * identword * op '=' * V 'expv' * tkn ',' * sep_by(V 'expv', tkn ',') * space * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
         + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * V 'block' * kw 'end') / to_raw_lua
         + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcbody') / to_ast_func_named)
         + Ct(kw 'local' * kw 'function' * Cg(identword, 'name') * V 'funcbody') / as_local(to_ast_func_named)
