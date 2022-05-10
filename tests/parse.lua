@@ -265,6 +265,18 @@ end
 
     end)
 
+    it("should parse a function with indent", function()
+        local input = [[
+function f()
+    last_ids = ifdent > 3 or y
+end
+
+]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local actual = parse_gram(input, false)
+        assert.is_true(actual ~= nil)
+
+    end)
     it("should parse a table with keys", function()
         local input = [[
 v = {function()

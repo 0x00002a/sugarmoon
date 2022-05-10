@@ -33,7 +33,7 @@ end
 
 local function kw(word)
     M.keywords[word] = true
-    return space * P(word) * space
+    return space * (P(word) * -(lpeg.alnum + P '_')) * space
 end
 
 local function sep_by(p, ch)
