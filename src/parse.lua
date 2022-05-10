@@ -192,7 +192,7 @@ local function to_ast_field(c)
 end
 
 local function to_ast_func(c)
-    return ast.mk_fn_annon(c.args, c.body)
+    return ast.mk_fn_annon(c.args.values, c.body)
 end
 
 local function to_ast_func_named(c)
@@ -219,9 +219,12 @@ end
 local function to_ast_chunk(c)
     local stmts = {}
     for _, v in ipairs(c) do
-        table.insert(stmts, v.stmt)
+        if v.stmt then
+            table.insert(stmts, v.stmt)
+        end
     end
-    return ast.mk_chunk(stmts, c.retr)
+    local retr = c[1] and c[1].retr
+    return ast.mk_chunk(stmts, retr)
 end
 
 local function to_ast_assign_local(c)
@@ -232,7 +235,9 @@ end
 
 local complete_grammer = {
     'chunk';
-    chunk = Ct((Ct(Cg(V "stat", 'stmt')) * maybe(tkn ";")) ^ 1 * space * maybe(Cg(V "laststat", 'retr') * maybe(tkn ";"))) / to_ast_chunk,
+    chunk = Ct(
+        ((Ct(Cg(V "stat", 'stmt')) * maybe(tkn ";")) ^ 1 * space * maybe(Ct(Cg(V "laststat", 'retr')) * maybe(tkn ";")))
+        + Ct(space * Cg(V 'laststat', 'retr') * maybe(tkn ';'))) / to_ast_chunk,
     block = V "chunk",
     stat = Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
         + C(V 'functioncall') / to_raw_lua
@@ -260,8 +265,8 @@ local complete_grammer = {
         + C(number) / to_raw_lua
         + C(string_literal()) / to_raw_lua
         + C(tkn "...") / to_raw_lua
-        + C(V 'functioncall') / to_raw_lua
         + V 'function_'
+        + C(V 'functioncall') / to_raw_lua
         + V 'tableconstructor'
         + V 'var'
         + C(tkn '(' * V 'exp' * tkn ')') / to_raw_lua,
@@ -276,7 +281,7 @@ local complete_grammer = {
     call = (V 'args') + (P ':' * space * V 'name' * space * V 'args'),
     functioncall = V 'prefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'call',
     args = (tkn '(' * maybe(V 'explist') * tkn ')') + (V 'tableconstructor') + string_literal(),
-    function_ = (kw 'function' * V 'funcbody') / to_ast_func,
+    function_ = Ct(kw 'function' * V 'funcbody') / to_ast_func,
     funcbody = Cg(fn_args, 'args') * space * maybe(Cg(V 'block', 'body')) * kw 'end',
     parlist = (V 'namelist' * maybe(P "," * space * P '...')) + (P "..."),
     tableconstructor = Ct(tkn '{' * Cg(Ct(maybe(V 'fieldlist')), "fields") * tkn '}') / to_ast_tbl,

@@ -56,6 +56,13 @@ describe("parser tests", function()
             ast.mk_raw_lua("y(2)")
         ), rs)
     end)
+    it("should parse assignment to a function", function()
+        local input = "x = function() end"
+        local rs = parse_gram(input)
+        assert.are.same(ast.mk_assign(ast.mk_name('x'),
+            ast.mk_fn_annon()
+        ), rs)
+    end)
 
     it("should parse a function with table prefix and args", function()
         local input = [[
@@ -72,10 +79,10 @@ end
         local input = [[
 function x()
     return function()
-        x()
-    end
+        x()end
 end
         ]]
+        assert:set_parameter('TableFormatLevel', -1)
         local expected = ast.mk_fn_named('x', {},
             ast.mk_chunk({},
                 ast.mk_fn_annon({},
@@ -85,7 +92,8 @@ end
                 )
             )
         )
-        assert.are.same(expected, parse_gram(input))
+        local actual = parse_gram(input)
+        assert.are.same(expected, actual)
 
     end)
     it("should parse a function with table prefix", function()
