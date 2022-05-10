@@ -298,8 +298,9 @@ local complete_grammer = {
     fieldlist = sep_by(space * Cg(V 'field', 'fields') * space, V 'fieldsep') * maybe(V 'fieldsep'),
     fieldsep = tkn ',' + tkn ';',
     binop = binop(),
-    tableindex = (V 'name' * ((tkn '.' * V 'name') ^ 1))
-        + (ident_name * (tkn '[' * V 'expv' * tkn ']') ^ 1),
+    tableindex = (ident_name * (tkn '[' * V 'expv' * tkn ']') ^ 1)
+        + (V 'name' * ((tkn '.' * V 'name') ^ 1)),
+
     expv = V 'exp' + V 'value',
     unop = P '~' + P 'not' + P '#',
     prefixexp = V 'var' + V 'functioncall' + (tkn '(' + V 'expv' + tkn ')'),
