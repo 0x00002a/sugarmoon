@@ -233,6 +233,12 @@ local function to_ast_assign_local(c)
     return ast.mk_local(ast.mk_assign(lhs, rhs))
 end
 
+local function as_local(inner)
+    return function(c)
+        return ast.mk_local(inner(c))
+    end
+end
+
 local complete_grammer = {
     'chunk';
     chunk = Ct(
@@ -251,7 +257,7 @@ local complete_grammer = {
         + C(kw 'for' * identword * op '=' * V 'exp' * tkn ',' * sep_by(V 'exp', tkn ',') * space * kw 'do' * V 'block' * kw 'end') / to_raw_lua
         + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * V 'block' * kw 'end') / to_raw_lua
         + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcbody') / to_ast_func_named)
-        + (kw 'local' * kw 'function' * identword * V 'funcbody')
+        + Ct(kw 'local' * kw 'function' * Cg(identword, 'name') * V 'funcbody') / as_local(to_ast_func_named)
         + Ct(kw 'local' * Cg(V 'namelist', 'lhs') * maybe(op '=' * Cg(V 'explist', 'rhs'))) / to_ast_assign_local,
     laststat = (kw "return" * space * maybe(V 'explist')) + kw "break",
     funcname = ident_name * maybe(identword),
