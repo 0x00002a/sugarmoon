@@ -189,6 +189,8 @@ end
 local function to_ast_field(c)
     if c.lhs then
         return ast.mk_assign(c.lhs, c.rhs)
+    elseif c.value then
+        return c.value
     else
         error("not implemented")
     end
@@ -203,7 +205,10 @@ local function to_ast_func_named(c)
 end
 
 local function to_ast_tbl(c)
-    return ast.mk_tbl(c.fields or {})
+    return {
+        type = types.LUA_TABLE,
+        values = { c.fields.fields }
+    }
 end
 
 local function to_ast_assign(c)
