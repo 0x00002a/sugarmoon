@@ -4,7 +4,7 @@ local M = {}
 function M._str_split(s, ch)
     local sep = lpeg.P(ch)
     local el = lpeg.C((1 - sep) ^ 0)
-    return lpeg.match(lpeg.Ct(el * (sep * el) ^ 0), s)
+    --   return lpeg.match(lpeg.Ct(el * (sep * el) ^ 0), s)
 end
 
 function M.switch(v)

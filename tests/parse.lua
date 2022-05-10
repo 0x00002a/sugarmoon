@@ -134,6 +134,17 @@ do
         }
         ), rs)
     end)
+    it("should parse operators", function()
+        local input = [[
+do
+    x = y ^ 2end
+        ]]
+        local rs = parse_gram(input).inner
+        assert.are.same(ast.mk_chunk { ast.mk_assign(
+            ast.mk_name 'x',
+            ast.mk_raw_lua "y ^ 2")
+        }, rs)
+    end)
     it("should parse function with qualified call", function()
         local input = [[
 local function x()

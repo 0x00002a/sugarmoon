@@ -169,11 +169,11 @@ local number = lpeg.digit ^ 1
 
 local function binop()
     local ops = {
-        '+', '-', '/', '*', '^', '%', '..', '<', '<=', '>', '>=', '==', '~=', 'and', 'or'
+        'and', 'or', '+', '-', '/', '*', '^', '%', '..', '<', '<=', '>', '>=', '==', '~=',
     }
     local out = nil
     for _, p in pairs(ops) do
-        p = P(p)
+        p = tkn(p)
         if not out then
             out = p
         else
@@ -278,10 +278,9 @@ local complete_grammer = {
         + V 'var'
         + C(tkn '(' * V 'expv' * tkn ')') / to_raw_lua,
     space = space,
-    binopleft = (V 'binop' * space * V 'value'),
     exp = (V "unop" * V "space" * V "expv")
-        + (V 'binopleft' * (V "space" * V "binop" * V "space" * V "expv") ^ -1)
-    ,
+        + C(V 'value' * V 'space' * V 'binopright') / to_raw_lua,
+    binopright = V 'binop' * V 'expv' * maybe(V 'binopright'),
     callprefix = ident_name + V 'tableindex',
     name = identword,
     suffix = V 'call' + V 'index',
