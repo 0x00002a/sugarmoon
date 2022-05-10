@@ -302,7 +302,7 @@ local complete_grammer = {
         + (V 'name' * ((tkn '.' * V 'name') ^ 1)),
 
     expv = V 'exp' + V 'value',
-    unop = P '~' + P 'not' + P '#',
+    unop = P '-' + P 'not' + P '#',
     prefixexp = V 'var' + V 'functioncall' + (tkn '(' + V 'expv' + tkn ')'),
     vardot = tkn '.' * V 'var' * maybe(V 'vardot'),
     var = (C(V 'tableindex') / to_raw_lua) + V 'name',

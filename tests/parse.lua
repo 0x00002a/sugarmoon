@@ -89,6 +89,16 @@ t['x'] = f['y'] ]]
 
     end)
 
+    it("should parse an expression with binop then unop constant", function()
+        local input = [[
+function m()
+    return x ^ -1
+end
+        ]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local actual = parse_gram(input, false)
+        assert.is_true(actual.rhs.type == types.LUA_FN)
+    end)
 
     it("should parse an expression with braces", function()
         local input = [[
