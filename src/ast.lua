@@ -41,6 +41,14 @@ function M.chunk_append(chunk, stmt)
     return chunk
 end
 
+function M.mk_export(names, stmts)
+    return {
+        type = ts.EXPORT,
+        names = names,
+        stmts = stmts,
+    }
+end
+
 function M.mk_chunk(xs, retr)
     if xs[1] == nil then
         xs = { xs }

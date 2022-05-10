@@ -50,7 +50,11 @@ local function to_lua(c)
             return 'function' .. '(' .. table.concat(c.args, ',') .. ")\n" .. body .. '\nend'
         end,
         [types.EXPORT] = function()
-            return to_lua(c.target)
+            if c.stmts then
+                return table.concat(util.map(to_lua, c.stmts), '\n')
+            else
+                return ""
+            end
         end,
         [types.CHUNK] = function()
             local postfix = (c.retr and ("\nreturn " .. to_lua(c.retr) .. ' ')) or ""
@@ -67,11 +71,11 @@ local function to_lua(c)
             error(debug.traceback("invalid ast node: " .. util.to_str(c)))
         end
     }
-    assert(type(c) == 'table', debug.traceback("invalid node type: " .. util.to_str(c)))
+    assert(type(c) == 'table', debug.traceback("node has invalid datatype: " .. type(c) .. ' (' .. util.to_str(c) .. ')'))
     if not next(c) then
         return ""
     end
-    assert(c.type, debug.traceback("type cannot be nil"))
+    assert(c.type, debug.traceback("type cannot be nil: " .. util.to_str(c)))
     return util.switch(c.type)(lookup)
 end
 
@@ -81,20 +85,23 @@ local function mk_ctx()
     ctx.__module_name = "__SmModule"
 
     function ctx:add_export(node)
-        local found = ast.find_first({ types.EXPORT, types.ASSIGN }, node)
-        assert(found, 'invalid node for export: ' .. util.to_str(node))
-        local name = found.lhs
-        self.__exported[name] = true
+        for _, name in pairs(node.names) do
+            if type(name) == 'string' then
+                self.__exported[name] = true
+            else
+                self.__exported[name.word] = true
+            end
+        end
     end
 
     function ctx:_generate_exports()
         local values = {}
         for name, v in pairs(self.__exported) do
             if v then
-                local lhs = util.deep_copy(name)
+                local lhs = ast.mk_name(name)
                 table.insert(lhs.context, self.__module_name)
 
-                table.insert(values, ast.mk_assign(lhs, name))
+                table.insert(values, ast.mk_assign(lhs, ast.mk_name(name)))
             end
         end
         return ast.mk_chunk(values)
@@ -120,7 +127,7 @@ local function populate_exports(ast, ctx)
 
     util.switch(ast.type) {
         [types.EXPORT] = function()
-            ctx:add_export(ast.target)
+            ctx:add_export(ast)
         end,
         [types.CHUNK] = function()
             for _, v in pairs(ast.stmts) do

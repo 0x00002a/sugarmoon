@@ -152,8 +152,12 @@ local function to_ast_tbl(c)
 end
 
 local function to_ast_assign(c)
-    local name = (c.lhs.type == types.RAW_WORD and ast.mk_name(c.lhs.word)) or c.lhs
-    return ast.mk_assign(name, c.rhs)
+    local values = {}
+    for _, v in pairs(c.lhs) do
+        local name = (v.type == types.RAW_WORD and ast.mk_name(v.word)) or v
+        table.insert(values, name)
+    end
+    return ast.mk_assign(ast.mk_arglist(values), ast.mk_arglist(c.rhs))
 end
 
 local function to_ast_block(c)
@@ -176,8 +180,8 @@ local function to_ast_chunk(c)
 end
 
 local function to_ast_assign_local(c)
-    local lhs = c.lhs
-    local rhs = c.rhs or ast.mk_raw_lua('nil')
+    local lhs = ast.mk_arglist(c.lhs)
+    local rhs = ast.mk_arglist(c.rhs or { ast.mk_raw_lua('nil') })
     return ast.mk_local(ast.mk_assign(lhs, rhs))
 end
 
@@ -205,11 +209,12 @@ local complete_grammer = {
         + C(kw 'for' * space * V 'name' * op '=' * V 'expv' * tkn ',' * sep_by(V 'expv', tkn ',') * space * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
         + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
         + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcbody') / to_ast_func_named)
-        + Ct(kw 'local' * kw 'function' * Cg(V 'name', 'name') * V 'funcbody') / as_local(to_ast_func_named)
+        + V 'local_fn'
         + Ct(kw 'local' * Cg(V 'namelist', 'lhs') * maybe(op '=' * Cg(V 'explist', 'rhs'))) / to_ast_assign_local
         + Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
         + C(V 'functioncall') / to_raw_lua,
 
+    local_fn = Ct(kw 'local' * kw 'function' * Cg(V 'name', 'name') * V 'funcbody') / as_local(to_ast_func_named),
     keywords = kw 'and'
         + kw 'break'
         + kw 'else'
@@ -232,10 +237,10 @@ local complete_grammer = {
         + kw 'while',
     laststat = (kw "return" * maybe(V 'explist')) + kw "break",
     funcname = V 'identifier' * maybe(P ':' * V 'name'),
-    varlist = sep_by(space * V 'var', tkn ','),
-    namelist = sep_by(V 'name', tkn ','),
+    varlist = Ct(sep_by(space * V 'var', tkn ',')),
+    namelist = Ct(V 'name' * (void (tkn ',') * V 'name') ^ 0),
     index = (tkn '[' * V 'expv' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
-    explist = sep_by(V 'expv', tkn ','),
+    explist = Ct(sep_by(V 'expv', tkn ',')),
     value = C(tkn 'nil') / to_raw_lua
         + C(tkn 'false') / to_raw_lua
         + C(tkn 'true') / to_raw_lua
@@ -301,8 +306,50 @@ function M.add_debug_trace(grammar)
     return grammar
 end
 
-M.grammar = P(complete_grammer)
+local function as_export(p)
+    return function(c)
+        local inner = p(c)
+        local name = inner.lhs.word
+        return ast.mk_export({ name }, { ast.mk_local(inner) })
+    end
+end
+
+local extensions = {
+    modules = {
+        stat = function(before)
+            return before
+                + Ct(kw 'export' * kw 'function' * Cg(V 'name', 'name') * V 'funcbody') / as_export(to_ast_func_named)
+                + Ct(kw 'export' * Cg(V 'namelist', 'lhs')) / function(c) return ast.mk_export(c.lhs) end
+        end,
+        keywords = function(before)
+            return before + kw 'export'
+        end
+    }
+}
+
+local function apply_extension(patch, orig)
+    local o = {}
+    for k, v in pairs(orig) do
+        if patch[k] then
+            o[k] = patch[k](v)
+        else
+            o[k] = v
+        end
+    end
+    return o
+end
+
+local function apply_extensions(orig)
+    for _, v in pairs(extensions) do
+        orig = apply_extension(v, orig)
+    end
+    return orig
+end
+
+complete_grammer = apply_extensions(complete_grammer)
+
 M.grammar_raw = complete_grammer
+M.grammar = P(complete_grammer)
 
 function M.parse(code)
     local m = lpeg.match(Ct(M.grammar) * P(0), code)
