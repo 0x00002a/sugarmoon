@@ -196,7 +196,7 @@ end
 local function to_ast_tbl(c)
     return {
         type = types.LUA_TABLE,
-        values = { c.fields.fields }
+        values = c.fields
     }
 end
 
@@ -288,8 +288,8 @@ local complete_grammer = {
     function_ = Ct(kw 'function' * V 'funcbody') / to_ast_func,
     funcbody = Cg(fn_args, 'args') * space * maybe(Cg(V 'block', 'body')) * kw 'end',
     parlist = (V 'namelist' * maybe(P "," * space * P '...')) + (P "..."),
-    tableconstructor = Ct(tkn '{' * Cg(Ct(maybe(V 'fieldlist')), "fields") * tkn '}') / to_ast_tbl,
-    fieldlist = sep_by(space * Cg(V 'field', 'fields') * space, V 'fieldsep') * maybe(V 'fieldsep'),
+    tableconstructor = Ct(tkn '{' * Cg(maybe(V 'fieldlist'), "fields") * tkn '}') / to_ast_tbl,
+    fieldlist = Ct(space / 0 * V 'field' * (space / 0 * V 'fieldsep' / 0 * space / 0 * V 'field') ^ 0) * maybe(V 'fieldsep'),
     fieldsep = tkn ',' + tkn ';',
     binop = binop(),
     tableindex = (ident_name * (tkn '[' * V 'expv' * tkn ']') ^ 1)

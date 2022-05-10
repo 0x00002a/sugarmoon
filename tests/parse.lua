@@ -89,6 +89,22 @@ t['x'] = f['y'] ]]
 
     end)
 
+    it("should parse a table and give all results", function()
+        local input = [[
+v = { 'a', 'b' }
+        ]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_assign(ast.mk_name 'v', {
+            type = types.LUA_TABLE,
+            values = {
+                ast.mk_raw_lua("'a'"),
+                ast.mk_raw_lua("'b'")
+            }
+        })
+        local actual = parse_gram(input, false)
+        assert.are.same(expected, actual)
+
+    end)
     it("should parse an expression with elseif", function()
         local input = [[
 if c.lhs then
