@@ -1,10 +1,16 @@
 local lpeg = require("lpeg")
 local M = {}
 
-function M._str_split(s, ch)
-    local sep = lpeg.P(ch)
-    local el = lpeg.C((1 - sep) ^ 0)
-    return lpeg.match(lpeg.Ct(el * (sep * el) ^ 0), s)
+function M._switch(v)
+    return function(lookup)
+        local k = lookup[v]
+        if k == nil then
+            return lookup['_']()
+        end
+        --else
+        --return k()
+        --end
+    end
 end
 
 function M.switch(v)

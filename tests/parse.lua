@@ -75,6 +75,30 @@ end
         local rs = parse.parse(input).stmts[3]
         assert.are.same(ast.mk_fn_named('M.x', { 'v' }, ast.mk_chunk(ast.mk_local(ast.mk_assign(ast.mk_raw_word 'v', ast.mk_raw_lua '2')))), rs)
     end)
+
+    it("should parse an if block", function()
+        local input = [[
+if x then y() end]]
+        local expected = ast.mk_raw_lua("if x then y() end")
+        local actual = parse_gram(input)
+        assert.are.same(expected, actual)
+
+    end)
+
+    it("should parse an equality expression", function()
+        local input = [[
+do
+    x = y == z end
+        ]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_block(ast.mk_chunk {
+            ast.mk_assign(ast.mk_name 'x', ast.mk_raw_lua 'y == z')
+        }
+        )
+        local actual = parse_gram(input)
+        assert.are.same(expected, actual)
+
+    end)
     it("should parse a function return with args", function()
         local input = [[
 function x(y)
