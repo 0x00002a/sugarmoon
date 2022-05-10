@@ -58,11 +58,11 @@ describe("parser tests", function()
     describe("assignment", function()
         it("should match x = y", function()
             local input = "x = y"
-            local rs = lpeg.match(lpeg.Ct(parse.patterns.assignment), input)[1]
+            local rs = lpeg.match(lpeg.Ct(parse.grammar), input)[1]
             assert.are.same({
                 type = types.ASSIGN,
                 lhs = ast.mk_name('x'),
-                rhs = ast.mk_name('y'),
+                rhs = ast.mk_raw_word('y'),
             }, rs)
         end)
     end)
