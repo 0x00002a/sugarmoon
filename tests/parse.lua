@@ -20,21 +20,6 @@ local function parse_gram(input, debug)
 end
 
 describe("parser tests", function()
-    it("should parse function args with multiple commas", function()
-        local input = "test,t2"
-        local rs = lpeg.match(lpeg.C(parse.patterns.arglist), input)
-        assert.same(input, rs)
-    end)
-    it("should parse function args", function()
-        local input = "(test)"
-        local rs = lpeg.match(lpeg.C(parse.patterns.fn_args), input)
-        assert.same(input, rs)
-    end)
-    it("until_p should parse until expr", function()
-        local input = "function x(test) end"
-        local rs = lpeg.match(lpeg.C(parse.patterns.until_p(lpeg.P "end")), input)
-        assert.same(input, rs)
-    end)
     it("should parse a lua function with empty args", function()
         local input = "function x() end"
         local rs = lpeg.match(lpeg.Ct(parse.grammar), input)
@@ -435,13 +420,6 @@ local function x()
         local input = "function x(test,t2) end"
         local rs = parse_gram(input)
         assert.are.same(ast.mk_fn_named('x', { "test", "t2" }), rs)
-    end)
-    describe("variable name", function()
-        it("should match x", function()
-            local input = "x"
-            local rs = parse_pat(pat.variable_ns, input)
-            assert.are.same(ast.mk_name('x'), rs)
-        end)
     end)
     describe("assignment", function()
         it("should match x = y", function()
