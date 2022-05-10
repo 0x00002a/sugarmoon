@@ -158,9 +158,12 @@ local function string_literal()
     for _, p in pairs(escape_seqs) do
         valid_ch = valid_ch + p
     end
+    local function match_with(p)
+        return P(p) * ((P("\\" .. p)) + (1 - P(p))) ^ 0 * P(p)
+    end
 
-    local dbl = P '"' * valid_ch ^ 0 * P '"'
-    local single = P "'" * valid_ch ^ 0 * P "'"
+    local dbl = match_with '"'
+    local single = match_with "'"
     local long = P "[[" * (valid_ch + P '\n') ^ 0 * P "]]"
     return dbl + single + long
 end
@@ -281,7 +284,7 @@ local complete_grammer = {
     exp = (V "unop" * V "space" * V "expv")
         + C(V 'value' * V 'space' * V 'binopright') / to_raw_lua,
     binopright = V 'binop' * V 'expv' * maybe(V 'binopright'),
-    callprefix = ident_name + V 'tableindex',
+    callprefix = V 'tableindex' + ident_name,
     name = identword,
     suffix = V 'call' + V 'index',
     call = (V 'args') + (P ':' * space * V 'name' * space * V 'args'),

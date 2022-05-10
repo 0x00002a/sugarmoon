@@ -121,6 +121,15 @@ end
 
     end)
 
+    it("should parse a table function call", function()
+        local input = [[
+h['y']()]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_raw_lua("h['y']()")
+        local actual = parse_gram(input)
+        assert.are.same(expected, actual)
+
+    end)
     it("should parse a function return with statements", function()
         local input = [[
 function x(y)
