@@ -241,7 +241,7 @@ local complete_grammer = {
     block = V "chunk",
     stat = Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
         + C(V 'functioncall') / to_raw_lua
-        + Ct(kw 'do' * space * Cg(V 'block', 'inner') * space * kw 'end') / to_ast_block
+        + Ct(kw 'do' * space * maybe(Cg(V 'block', 'inner')) * space * kw 'end') / to_ast_block
         + C(kw 'while' * space * V 'expv' * space * kw 'do' * space * V 'block' * space * kw 'end') / to_raw_lua
         + C(kw 'repeat' * space * V 'block' * space * kw 'until' * space * V 'expv') / to_raw_lua
         + C(kw 'if' * space * V 'expv' * space * kw 'then' * space * V 'block' * space
@@ -257,7 +257,7 @@ local complete_grammer = {
     funcname = ident_name * maybe(identword),
     varlist = sep_by(V 'var', P ',' * space),
     namelist = sep_by(identword, tkn ','),
-    index = (tkn '[' * V 'exp' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
+    index = (tkn '[' * V 'expv' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
     explist = sep_by(V 'expv', tkn ','),
     value = tkn 'nil'
         + C(tkn 'false') / to_raw_lua
@@ -268,12 +268,13 @@ local complete_grammer = {
         + V 'function_'
         + C(V 'functioncall') / to_raw_lua
         + V 'tableconstructor'
+        + C(V 'tableindex') / to_raw_lua
         + V 'var'
-        + C(tkn '(' * V 'exp' * tkn ')') / to_raw_lua,
+        + C(tkn '(' * V 'expv' * tkn ')') / to_raw_lua,
     space = space,
     binopleft = (V 'binop' * space * V 'value'),
-    exp = (V "unop" * V "space" * V "exp")
-        + (V 'binopleft' * (V "space" * V "binop" * V "space" * V "exp") ^ -1)
+    exp = (V "unop" * V "space" * V "expv")
+        + (V 'binopleft' * (V "space" * V "binop" * V "space" * V "expv") ^ -1)
     ,
     prefix = (tkn '(' + V 'exp' + tkn ')') + V 'name',
     name = identword,
@@ -288,6 +289,7 @@ local complete_grammer = {
     fieldlist = sep_by(space * Cg(V 'field', 'fields') * space, V 'fieldsep') * maybe(V 'fieldsep'),
     fieldsep = tkn ',' + tkn ';',
     binop = binop(),
+    tableindex = ident_name * space * V 'index',
     expv = V 'exp' + V 'value',
     unop = P '~' + P 'not' + P '#',
     var = V 'name' + (V 'prefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'index'),

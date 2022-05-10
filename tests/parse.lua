@@ -75,6 +75,27 @@ end
         local rs = parse.parse(input).stmts[3]
         assert.are.same(ast.mk_fn_named('M.x', { 'v' }, ast.mk_chunk(ast.mk_local(ast.mk_assign(ast.mk_raw_word 'v', ast.mk_raw_lua '2')))), rs)
     end)
+    it("should parse a function return with args", function()
+        local input = [[
+function x(y)
+    return function(z)
+        x()end
+end
+        ]]
+        assert:set_parameter('TableFormatLevel', -1)
+        local expected = ast.mk_fn_named('x', { 'y' },
+            ast.mk_chunk({},
+                ast.mk_fn_annon({ 'z' },
+                    ast.mk_chunk(
+                        ast.mk_raw_lua("x()")
+                    )
+                )
+            )
+        )
+        local actual = parse_gram(input)
+        assert.are.same(expected, actual)
+
+    end)
     it("should parse a function return", function()
         local input = [[
 function x()
@@ -95,6 +116,23 @@ end
         local actual = parse_gram(input)
         assert.are.same(expected, actual)
 
+    end)
+    it("should parse table indexing", function()
+        local input = [[
+do
+    local x = y[2]end
+        ]]
+        local rs = parse_gram(input).inner
+        assert.are.same(ast.mk_chunk(
+            {
+            ast.mk_local(
+                ast.mk_assign(
+                    ast.mk_raw_word 'x',
+                    ast.mk_raw_lua 'y[2]'
+                )
+            )
+        }
+        ), rs)
     end)
     it("should parse a function with table prefix", function()
         local input = "function M.x() end"
