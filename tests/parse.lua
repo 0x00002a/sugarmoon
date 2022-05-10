@@ -68,11 +68,11 @@ describe("parser tests", function()
     end)
     describe("lua table", function()
         it("should match", function()
-            local input = "{ t = {} }"
-            local rs = lpeg.match(lpeg.Ct(parse.patterns.lua_table), input)[1]
-            assert.are.same(ast.mk_tbl({
+            local input = "x = { t = {} }"
+            local rs = lpeg.match(lpeg.Ct(parse.grammar), input)[1]
+            assert.are.same(ast.mk_assign(ast.mk_name('x'), ast.mk_tbl({
                 ['t'] = ast.mk_tbl({})
-            })
+            }))
                 , rs)
         end)
     end)

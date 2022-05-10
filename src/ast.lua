@@ -42,10 +42,21 @@ function M.mk_assign(lhs, rhs)
     }
 end
 
+function M.mk_raw_word(word)
+    return {
+        type = ts.RAW_WORD,
+        word = word,
+    }
+end
+
 function M.mk_tbl(values)
     local ast_values = {}
     for k, v in pairs(values) do
-        table.insert(ast_values, M.mk_assign(M.mk_name(k), v))
+        if not v.type or v.type ~= ts.ASSIGN then
+            table.insert(ast_values, M.mk_assign(M.mk_raw_word(k), v))
+        else
+            table.insert(ast_values, v)
+        end
     end
     return {
         type = M.types.LUA_TABLE,

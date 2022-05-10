@@ -197,11 +197,20 @@ local function to_ast_func_named(c)
     return ast.mk_fn_named(c.name, c.args.values, c.body)
 end
 
-local complete_grammer = P {
+local function to_ast_tbl(c)
+    return ast.mk_tbl(c.fields or {})
+end
+
+local function to_ast_assign(c)
+    assert(c.lhs.type == types.RAW_WORD)
+    return ast.mk_assign(ast.mk_name(c.lhs.word), c.rhs)
+end
+
+local complete_grammer = {
     'chunk';
-    chunk = (V "stat" * maybe(tkn ";")) ^ 1 * space * maybe(V "laststat" * maybe(tkn ";")),
+    chunk = ((V "stat" * maybe(tkn ";")) ^ 1) * space * maybe(V "laststat" * maybe(tkn ";")),
     block = V "chunk",
-    stat = (V 'varlist' * space * P '=' * space * V 'explist')
+    stat = Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
         + (V 'functioncall')
         + (kw 'do' * space * V 'block' * space * kw 'end')
         + (kw 'while' * space * V 'exp' * space * kw 'do' * space * V 'block' * space * kw 'end')
@@ -220,7 +229,7 @@ local complete_grammer = P {
     varlist = sep_by(V 'var', P ',' * space),
     namelist = sep_by(identword, P ',' * space),
     index = (tkn '[' * V 'exp' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
-    explist = ((V 'exp' * P ',' * space) ^ 0) * V 'exp',
+    explist = sep_by(V 'exp' + V 'value', tkn ','),
     value = tkn 'nil'
         + tkn 'false'
         + tkn 'true'
@@ -233,7 +242,7 @@ local complete_grammer = P {
         + (tkn '(' * V 'exp' * tkn ')'),
     space = space,
     binopleft = (V 'binop' * space * V 'value'),
-    exp = V "unop" * V "space" * V "exp" +
+    exp = (V "unop" * V "space" * V "exp") +
         V 'binopleft' * (V "space" * V "binop" * V "space" * V "exp") ^ -1;
     prefix = (tkn '(' + V 'exp' + tkn ')') + V 'name',
     name = identword,
@@ -244,15 +253,17 @@ local complete_grammer = P {
     function_ = (kw 'function' * V 'funcbody') / to_ast_func,
     funcbody = Cg(fn_args, 'args') * space * maybe(Cg(V 'block', 'body')) * kw 'end',
     parlist = (V 'namelist' * maybe(P "," * space * P '...')) + (P "..."),
-    tableconstructor = P '{' * V 'fieldlist' * P '}',
-    fieldlist = sep_by(V 'field', V 'fieldsep') * maybe(V 'fieldsep'),
-    fieldsep = P ',' + P ';',
+    tableconstructor = Ct(tkn '{' * Cg(Ct(maybe(V 'fieldlist')), "fields") * tkn '}') / to_ast_tbl,
+    fieldlist = sep_by(space * Cg(V 'field', 'fields') * space, V 'fieldsep') * maybe(V 'fieldsep'),
+    fieldsep = tkn ',' + tkn ';',
     binop = binop(),
+    expv = V 'exp' + V 'value',
     unop = P '~' + P 'not' + P '#',
-    var = (V 'prefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'index') + V 'name',
-    field = (
-        (tkn '[' * Cg(V 'exp', 'lhs') * tkn ']' * tkn '=' * Cg(V 'exp', 'rhs'))
-            + (Cg(identword, 'lhs') * tkn '=' * Cg(V 'exp', 'rhs')) + (Cg(V 'exp', 'value'))) / to_ast_field,
+    var = V 'name' + (V 'prefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'index'),
+    field = Ct(
+        (tkn '[' * Cg(V 'expv', 'lhs') * tkn ']' * tkn '=' * Cg(V 'expv', 'rhs'))
+        + (Cg(identword, 'lhs') * tkn '=' * Cg(V 'expv', 'rhs'))
+        + (Cg(V 'expv', 'value'))) / to_ast_field,
 }
 
 local rvalue = P {
@@ -261,7 +272,8 @@ local rvalue = P {
     assign = assignment(lpeg.V "rval"),
     table = lua_table(lpeg.V "assign")
 }
-M.grammar = complete_grammer
+M.grammar = P(complete_grammer)
+M.grammar_raw = complete_grammer
 
 M.patterns = {
     string_literal = string_literal(),
