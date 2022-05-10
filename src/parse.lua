@@ -196,7 +196,7 @@ end
 local function to_ast_tbl(c)
     return {
         type = types.LUA_TABLE,
-        values = c.fields
+        values = (c.fields == '' and {}) or c.fields
     }
 end
 
