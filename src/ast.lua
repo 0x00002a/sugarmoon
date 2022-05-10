@@ -18,7 +18,7 @@ local ts = M.types
 
 function M.mk_name(ident_str)
     if type(ident_str) == 'table' and not ident_str.parts then
-        assert(ident_str.type == M.types.IDENT_NAME)
+        assert(ident_str.type == M.types.IDENT_NAME or ident_str.type == M.types.RAW_WORD)
         return ident_str
     end
     local parts = (type(ident_str) == 'table' and ident_str.parts) or util.str_split(ident_str, '.')

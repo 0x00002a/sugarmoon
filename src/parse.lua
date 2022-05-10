@@ -282,11 +282,11 @@ local complete_grammer = {
     exp = (V "unop" * V "space" * V "expv")
         + (V 'binopleft' * (V "space" * V "binop" * V "space" * V "expv") ^ -1)
     ,
-    prefix = (tkn '(' + V 'exp' + tkn ')') + V 'name',
+    callprefix = ident_name + V 'tableindex',
     name = identword,
     suffix = V 'call' + V 'index',
     call = (V 'args') + (P ':' * space * V 'name' * space * V 'args'),
-    functioncall = V 'prefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'call',
+    functioncall = V 'callprefix' * V 'call',
     args = (tkn '(' * maybe(V 'explist') * tkn ')') + (V 'tableconstructor') + string_literal(),
     function_ = Ct(kw 'function' * V 'funcbody') / to_ast_func,
     funcbody = Cg(fn_args, 'args') * space * maybe(Cg(V 'block', 'body')) * kw 'end',
@@ -295,10 +295,11 @@ local complete_grammer = {
     fieldlist = sep_by(space * Cg(V 'field', 'fields') * space, V 'fieldsep') * maybe(V 'fieldsep'),
     fieldsep = tkn ',' + tkn ';',
     binop = binop(),
-    tableindex = ident_name * space * V 'index',
+    tableindex = (ident_name * space * (tkn '[' * V 'expv' * tkn ']'))
+        + (V 'name' * (tkn '.' * V 'name') ^ 1),
     expv = V 'exp' + V 'value',
     unop = P '~' + P 'not' + P '#',
-    var = V 'name' + (V 'prefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'index'),
+    var = V 'name' + (V 'callprefix' * (space * V 'suffix' * #(space * V 'suffix')) ^ 0 * space * V 'index'),
     field = Ct(
         (tkn '[' * Cg(V 'expv', 'lhs') * tkn ']' * tkn '=' * Cg(V 'expv', 'rhs'))
         + (Cg(identword, 'lhs') * tkn '=' * Cg(V 'expv', 'rhs'))

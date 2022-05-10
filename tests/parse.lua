@@ -134,6 +134,32 @@ do
         }
         ), rs)
     end)
+    it("should parse function with qualified call", function()
+        local input = [[
+local function x()
+    local y = some.thing(2)end
+        ]]
+        local rs = parse_gram(input)
+        assert.are.same(
+            ast.mk_local(
+                ast.mk_fn_named(ast.mk_raw_word 'x', {},
+                    ast.mk_chunk {
+                        ast.mk_local(
+                            ast.mk_assign(
+                                ast.mk_raw_word 'y',
+                                ast.mk_raw_lua 'some.thing(2)'
+                            )
+                        )
+                    }
+                )
+            )
+            , rs)
+    end)
+    it("should parse a local function decl", function()
+        local input = "local function x() end"
+        local rs = parse_gram(input)
+        assert.are.same(ast.mk_local(ast.mk_fn_named(ast.mk_raw_word 'x')), rs)
+    end)
     it("should parse a function with table prefix", function()
         local input = "function M.x() end"
         local rs = parse_gram(input)
