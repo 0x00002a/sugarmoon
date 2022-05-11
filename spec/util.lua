@@ -1,4 +1,4 @@
-local util = require("src.util")
+local util = require("sugarmoon.util")
 
 
 describe("util tests", function()

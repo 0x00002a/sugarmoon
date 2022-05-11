@@ -1,5 +1,5 @@
-local types = require("src.ast").types
-local ast = require("src.ast")
+local types = require("sugarmoon.ast").types
+local ast = require("sugarmoon.ast")
 
 describe("ast tests", function()
     describe("find_first", function()

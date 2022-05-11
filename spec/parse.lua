@@ -1,8 +1,8 @@
-local parse = require("src.parse")
+local parse = require("sugarmoon.parse")
 local lpeg = require("lpeglabel")
-local types = require("ast").types
-local ast = require("ast")
-local util = require("util")
+local types = require("sugarmoon.ast").types
+local ast = require("sugarmoon.ast")
+local util = require("sugarmoon.util")
 
 require("busted.runner")()
 

@@ -1,0 +1,8 @@
+-- vim: ft=lua
+return {
+    _all = {
+        pattern = '%.lua',
+        lpath = './lua/?.lua'
+    }
+}
+
