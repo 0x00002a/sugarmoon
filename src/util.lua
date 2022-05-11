@@ -1,4 +1,4 @@
-local lpeg = require("lpeg")
+local lpeg = require("lpeglabel")
 local M = {}
 
 

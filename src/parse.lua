@@ -1,4 +1,4 @@
-local lpeg = require("lpeg")
+local lpeg = require("lpeglabel")
 lpeg.locale(lpeg)
 
 local util = require("util")
@@ -12,6 +12,7 @@ local V = lpeg.V
 local Ct = lpeg.Ct
 local Cg = lpeg.Cg
 local Cc = lpeg.Cc
+local lbl = lpeg.T
 
 local M = {}
 
@@ -222,6 +223,7 @@ local complete_grammer = {
     local_fn = Ct(kw 'local' * kw 'function' * Cg(V 'name', 'name') * V 'funcpostfix') / as_local(to_ast_func_named),
     keywords = kw 'and'
         + kw 'break'
+        + kw 'do'
         + kw 'else'
         + kw 'elseif'
         + kw 'end'
@@ -321,6 +323,10 @@ local function as_export(p)
     end
 end
 
+local diag = {
+    SmallLambdaInvalidStat = 'statement not allowed for lambda with implicit return',
+}
+
 local extensions = {
     lambdas = {
         function_ = function(before)
@@ -328,8 +334,17 @@ local extensions = {
                 return c.args
             end
             local singlearg = Ct(V 'name') / function(c) return ast.mk_arglist({c[1].word}) end
+            local implicit_retr = (V 'stat' * lbl(diag.SmallLambdaInvalidStat)) + Ct(V 'expv') / function(c) return ast.mk_chunk({}, c[1]) end
             return before
-                + Ct(Cg(multiarg + singlearg, 'args') * tkn '=>' * V 'funcbody') / to_ast_func
+                + Ct(Cg(multiarg + singlearg, 'args') * tkn '=>' * (V 'funcbody' + Cg(implicit_retr, 'body'))) / function(c)
+                    return to_ast_func(c)
+                end
+        end
+    },
+    implicit_return = {
+        laststat = function(before)
+            return before
+                + (V 'expv')
         end
     }
 }
@@ -359,8 +374,12 @@ M.grammar_raw = complete_grammer
 M.grammar = P(complete_grammer)
 
 function M.parse(code)
-    local m = lpeg.match(Ct(M.grammar) * P(0), code)
-    return m[1]
+    local m, e, pos = lpeg.match(M.grammar * space * (-P(1) + lbl "didn't consume all input"), code)
+    if not m then
+        return m, { what = diag[e] or e, where = pos, remaining = code:sub(pos) }
+    else
+        return m
+    end
 end
 
 return M

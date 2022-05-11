@@ -1,5 +1,5 @@
 local parse = require("src.parse")
-local lpeg = require("lpeg")
+local lpeg = require("lpeglabel")
 local types = require("ast").types
 local ast = require("ast")
 local util = require("util")
@@ -72,7 +72,9 @@ function M.x(v)
     local v = 2
 end
 ]]
-        local rs = parse.parse(input).stmts[3]
+        local rs, e = parse.parse(input)
+        assert.are.same(nil, e)
+        rs = rs.stmts[3]
         assert.are.same(ast.mk_fn_named('M.x', { 'v' }, ast.mk_chunk(ast.mk_local(ast.mk_assign(ast.mk_raw_word 'v', ast.mk_raw_lua '2')))), rs)
     end)
 
@@ -454,14 +456,19 @@ local function x()
         end)
     end)
     describe("lambdas extension", function()
+        it("should fail to parse a lambda with a chunk", function()
+            local input = [[local f = x => do return y end]]
+            assert.are.same(nil, lpeg.match(parse.grammar, input))
+        end)
         it("should parse x => y end as a function with args x and body y", function()
         local inputs = {
             [[local f = x => return y end]],
-            [[local f = (x) => return y end]]
+            [[local f = (x) => return y end]],
+            [[local f = x => y]],
+            [[local f = (x) => y]],
         }
         local expected = ast.mk_local(ast.mk_fn_named(ast.mk_raw_word('f'), {'x'}, ast.mk_chunk({}, ast.mk_raw_word 'y')))
         check_ast(inputs, expected)
-
-    end)
+        end)
     end)
 end)
