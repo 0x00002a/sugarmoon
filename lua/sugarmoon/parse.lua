@@ -1,9 +1,9 @@
 local lpeg = require("lpeglabel")
 lpeg.locale(lpeg)
 
-local util = require("util")
-local types = require("ast").types
-local ast = require("ast")
+local util = require("sugarmoon.util")
+local types = require("sugarmoon.ast").types
+local ast = require("sugarmoon.ast")
 local P = lpeg.P
 local S = lpeg.S
 local R = lpeg.R

@@ -1,6 +1,6 @@
-local types = require("ast").types
-local util = require("util")
-local ast = require("ast")
+local types = require("sugarmoon.ast").types
+local util = require("sugarmoon.util")
+local ast = require("sugarmoon.ast")
 
 local M = {}
 
