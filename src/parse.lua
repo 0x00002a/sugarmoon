@@ -180,6 +180,7 @@ local function to_ast_chunk(c)
         end
     end
     local retr = c[#c] and c[#c].retr
+    retr = retr and single_arglist(retr)
     return ast.mk_chunk(stmts, retr)
 end
 
@@ -212,13 +213,13 @@ local complete_grammer = {
             * kw 'end') / to_raw_lua
         + C(kw 'for' * space * V 'name' * op '=' * V 'expv' * tkn ',' * sep_by(V 'expv', tkn ',') * space * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
         + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
-        + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcbody') / to_ast_func_named)
+        + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcpostfix') / to_ast_func_named)
         + V 'local_fn'
         + Ct(kw 'local' * Cg(V 'namelist', 'lhs') * maybe(op '=' * Cg(V 'explist', 'rhs'))) / to_ast_assign_local
         + Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
         + C(V 'functioncall') / to_raw_lua,
 
-    local_fn = Ct(kw 'local' * kw 'function' * Cg(V 'name', 'name') * V 'funcbody') / as_local(to_ast_func_named),
+    local_fn = Ct(kw 'local' * kw 'function' * Cg(V 'name', 'name') * V 'funcpostfix') / as_local(to_ast_func_named),
     keywords = kw 'and'
         + kw 'break'
         + kw 'else'
@@ -242,7 +243,7 @@ local complete_grammer = {
     laststat = (kw "return" * maybe(V 'explist')) + kw "break",
     funcname = V 'identifier' * maybe(P ':' * V 'name'),
     varlist = Ct(sep_by(space * V 'var', tkn ',')),
-    namelist = Ct(V 'name' * (void (tkn ',') * V 'name') ^ 0),
+    namelist = Ct(V 'name' * (void(tkn ',') * V 'name') ^ 0),
     index = (tkn '[' * V 'expv' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
     explist = Ct(sep_by(V 'expv', tkn ',')),
     value = C(tkn 'nil') / to_raw_lua
@@ -267,8 +268,10 @@ local complete_grammer = {
     functioncall_rec = V 'call' * maybe(V 'functioncall_rec'),
     functioncall = V 'callprefix' * V 'functioncall_rec',
     args = (hspace * P '(' * space * maybe(V 'explist') * tkn ')') + (space * V 'tableconstructor' * space) + (space * string_literal() * space),
-    function_ = Ct(kw 'function' * V 'funcbody') / to_ast_func,
-    funcbody = Cg(fn_args, 'args') * space * maybe(Cg(V 'block', 'body')) * kw 'end',
+    function_ = Ct(kw 'function' * V 'funcpostfix') / to_ast_func,
+    funcparams = Cg(fn_args, 'args'),
+    funcpostfix = V 'funcparams' * space * V 'funcbody',
+    funcbody = maybe(Cg(V 'block', 'body')) * kw 'end',
     parlist = (V 'namelist' * maybe(P "," * space * P '...')) + (P "..."),
     tableconstructor = Ct(tkn '{' * Cg(maybe(V 'fieldlist'), "fields") * tkn '}') / to_ast_tbl,
     fieldlist = Ct(space / 0 * V 'field' * (space / 0 * V 'fieldsep' / 0 * space / 0 * V 'field') ^ 0) * maybe(V 'fieldsep'),
@@ -319,14 +322,12 @@ local function as_export(p)
 end
 
 local extensions = {
-    modules = {
-        stat = function(before)
+    lambdas = {
+        function_ = function(before)
+            local multiarg = V 'funcparams'
+            local singlearg = Ct(V 'name', 'args') / function(c) return { c.word } end
             return before
-                + Ct(kw 'export' * kw 'function' * Cg(V 'name', 'name') * V 'funcbody') / as_export(to_ast_func_named)
-                + Ct(kw 'export' * Cg(V 'namelist', 'lhs')) / function(c) return ast.mk_export(c.lhs) end
-        end,
-        keywords = function(before)
-            return before + kw 'export'
+                + Ct((multiarg + singlearg) * tkn '=>' * V 'funcbody') / to_ast_func
         end
     }
 }
