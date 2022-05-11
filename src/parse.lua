@@ -324,10 +324,12 @@ end
 local extensions = {
     lambdas = {
         function_ = function(before)
-            local multiarg = V 'funcparams'
-            local singlearg = Ct(V 'name', 'args') / function(c) return { c.word } end
+            local multiarg = Ct(V 'funcparams') / function(c)
+                return c.args
+            end
+            local singlearg = Ct(V 'name') / function(c) return ast.mk_arglist({c[1].word}) end
             return before
-                + Ct((multiarg + singlearg) * tkn '=>' * V 'funcbody') / to_ast_func
+                + Ct(Cg(multiarg + singlearg, 'args') * tkn '=>' * V 'funcbody') / to_ast_func
         end
     }
 }
