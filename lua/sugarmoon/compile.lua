@@ -108,14 +108,6 @@ local function mk_ctx()
     end
 
     function ctx:wrap(tast)
-        local modname = ast.mk_name(self.__module_name)
-        tast = ast.mk_chunk(tast, modname)
-
-        local header = ast.mk_local(ast.mk_assign(modname, ast.mk_tbl({})))
-        ast.chunk_prepend(tast, header)
-        local exports = self:_generate_exports()
-        ast.chunk_append(tast, exports)
-
         return tast
     end
 
