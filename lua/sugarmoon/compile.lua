@@ -67,6 +67,9 @@ local function to_lua(c)
         [types.RAW_LUA] = function()
             return c.code
         end,
+        [types.STRING] = function()
+            return c.quotes[1] .. c.content .. c.quotes[2]
+        end,
         ["_"] = function()
             error(debug.traceback("invalid ast node: " .. util.to_str(c)))
         end

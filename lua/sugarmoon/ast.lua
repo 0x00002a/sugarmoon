@@ -15,6 +15,8 @@ M.types = {
     RAW_LUA = 'raw:lua-code',
     FIELD = 'ast:table-field',
     PRAGMA = 'decl:pragma',
+    IMPORT = 'decl:sm:import',
+    STRING = 'expr:string',
 }
 M.lang_features = {
     LAMBDAS = 'language:lambdas',
@@ -170,6 +172,26 @@ end
 
 function M.mk_fn_named(name, ...)
     return M.mk_assign(M.mk_name(name), M.mk_fn_annon(...))
+end
+
+function M.mk_import(path)
+    return {
+        type = ts.IMPORT,
+        path = path
+    }
+end
+
+function M.mk_string(content, quotes)
+    return {
+        type = ts.STRING,
+        content = content,
+        quotes = quotes
+    }
+end
+
+function M.located(node, pos)
+    node.location = pos
+    return node
 end
 
 function M.children(node)

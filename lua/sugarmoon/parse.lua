@@ -97,15 +97,20 @@ local function string_literal()
 
     local longstring = P { -- from Roberto Ierusalimschy's lpeg examples
         V "open" * C((P(1) - V "closeeq") ^ 0) *
-            V "close" / function(o, s) return s end;
+            V "close" / function(o, s) return { content = s, quotes = { '[[', ']]' } } end;
 
         open = "[" * Cg((P "=") ^ 0, "init") * P "[" * (P "\n") ^ -1;
         close = "]" * C((P "=") ^ 0) * "]";
         closeeq = lpeg.Cmt(V "close" * lpeg.Cb "init", function(s, i, a, b) return a == b end)
     }
-    local m = P "\"" * (P "\\" * P(1) + (1 - P "\"")) ^ 0 * P "\"" +
-        P "'" * (P "\\" * P(1) + (1 - P "'")) ^ 0 * P "'" +
-        longstring
+    local double = (P "\"" * C((P "\\" * P(1) + (1 - P "\"")) ^ 0) * P "\"") / function(s)
+        return { content = s, quotes = { '"', '"' } }
+    end
+    local single = (P "'" * C((P "\\" * P(1) + (1 - P "'")) ^ 0) * P "'") / function(s)
+        return { content = s, quotes = { "'", "'" } }
+    end
+
+    local m = double + single + longstring
     return m
 end
 
@@ -201,6 +206,10 @@ local function to_ast_pragma(c)
     return ast.mk_pragma(util.rstrip(c))
 end
 
+local function to_ast_string(c)
+    return ast.mk_string(c.content, c.quotes)
+end
+
 local hspace = lpeg.space ^ 0
 
 local complete_grammer = {
@@ -254,11 +263,12 @@ local complete_grammer = {
     namelist = Ct(V 'name' * (void(tkn ',') * V 'name') ^ 0),
     index = (tkn '[' * V 'expv' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
     explist = Ct(sep_by(V 'expv', tkn ',')),
+    string_literal = string_literal() / to_ast_string,
     value = C(tkn 'nil') / to_raw_lua
         + C(tkn 'false') / to_raw_lua
         + C(tkn 'true') / to_raw_lua
         + C(number) / to_raw_lua
-        + C(string_literal()) / to_raw_lua
+        + V 'string_literal'
         + C(tkn "...") / to_raw_lua
         + V 'function_'
         + C(V 'functioncall' * maybe(V 'vardot')) / to_raw_lua
@@ -346,6 +356,14 @@ local extensions = {
                     return ast.add_requires_feat(to_ast_func(c), ast.lang_features.LAMBDAS)
                 end
         end
+    },
+    import = {
+        stat = function(before)
+            local imp = (P 'import' * space * V 'string_literal') / function(c)
+                return ast.mk_import(c.content)
+            end
+            return imp + before
+        end,
     },
     implicit_return = {
         laststat = function(before)

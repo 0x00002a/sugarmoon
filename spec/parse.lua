@@ -30,6 +30,10 @@ local function check_ast(input, ast, parse)
     end
 end
 
+local function mk_str(content, quotes)
+    return ast.mk_string(content, { quotes, quotes })
+end
+
 describe("parser tests", function()
     it("should parse a language pragma", function()
         check_ast("#[[ language:lambdas ]]#", ast.mk_pragma("language:lambdas"))
@@ -48,7 +52,7 @@ describe("parser tests", function()
     it("should parse a string literal", function()
         local input = 'x = "x"'
         local rs = parse_gram(input)
-        assert.are.same(ast.mk_assign(ast.mk_name('x'), ast.mk_raw_lua('"x"')), rs)
+        assert.are.same(ast.mk_assign(ast.mk_name('x'), ast.mk_string('x', { '"', '"' })), rs)
     end)
     it("should parse assignment to a local function call", function()
         local input = "local x = y(2)"
@@ -102,8 +106,8 @@ v = { 'a', 'b' }
         assert:set_parameter('TableFormatLevel', -1)
         local expected = ast.mk_assign(ast.mk_name 'v',
             ast.mk_tbl {
-                ast.mk_tbl_field(ast.mk_raw_lua("'a'")),
-                ast.mk_tbl_field(ast.mk_raw_lua("'b'")),
+                ast.mk_tbl_field(mk_str('a', "'")),
+                ast.mk_tbl_field(mk_str('b', "'")),
             })
         local actual = parse_gram(input, false)
         assert.are.same(expected, actual)
@@ -128,7 +132,7 @@ end
 v = "\\"
         ]]
         assert:set_parameter('TableFormatLevel', -1)
-        local expected = ast.mk_assign(ast.mk_name 'v', ast.mk_raw_lua('"\\\\"'))
+        local expected = ast.mk_assign(ast.mk_name 'v', ast.mk_string('\\\\', { '"', '"' }))
         local actual = parse_gram(input, false)
         assert.are.same(expected, actual)
 
@@ -461,6 +465,11 @@ local function x()
                 [ast.mk_raw_word 't'] = ast.mk_tbl({})
             }))
                 , rs)
+        end)
+    end)
+    describe("import extension", function()
+        it("should parse an import decl", function()
+            check_ast([[import "x.y"]], ast.mk_import('x.y'))
         end)
     end)
     describe("lambdas extension", function()
