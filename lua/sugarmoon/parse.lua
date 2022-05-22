@@ -365,12 +365,6 @@ local extensions = {
             return imp + before
         end,
     },
-    implicit_return = {
-        laststat = function(before)
-            return before
-                + (V 'expv')
-        end
-    }
 }
 
 local function apply_extension(patch, orig)
