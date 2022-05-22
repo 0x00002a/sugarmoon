@@ -197,6 +197,10 @@ local function as_local(inner)
     end
 end
 
+local function to_ast_pragma(c)
+    return ast.mk_pragma(util.rstrip(c))
+end
+
 local hspace = lpeg.space ^ 0
 
 local complete_grammer = {
@@ -216,10 +220,12 @@ local complete_grammer = {
         + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
         + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcpostfix') / to_ast_func_named)
         + V 'local_fn'
+        + V 'pragma'
         + Ct(kw 'local' * Cg(V 'namelist', 'lhs') * maybe(op '=' * Cg(V 'explist', 'rhs'))) / to_ast_assign_local
         + Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
         + C(V 'functioncall') / to_raw_lua,
 
+    pragma = (P '#[[' * space * C((1 - P ']]#') ^ 0) * P ']]#') / to_ast_pragma,
     local_fn = Ct(kw 'local' * kw 'function' * Cg(V 'name', 'name') * V 'funcpostfix') / as_local(to_ast_func_named),
     keywords = kw 'and'
         + kw 'break'
@@ -333,7 +339,7 @@ local extensions = {
             local multiarg = Ct(V 'funcparams') / function(c)
                 return c.args
             end
-            local singlearg = Ct(V 'name') / function(c) return ast.mk_arglist({c[1].word}) end
+            local singlearg = Ct(V 'name') / function(c) return ast.mk_arglist({ c[1].word }) end
             local implicit_retr = (V 'stat' * lbl(diag.SmallLambdaInvalidStat)) + Ct(V 'expv') / function(c) return ast.mk_chunk({}, c[1]) end
             return before
                 + Ct(Cg(multiarg + singlearg, 'args') * tkn '=>' * (V 'funcbody' + Cg(implicit_retr, 'body'))) / function(c)

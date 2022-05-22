@@ -14,6 +14,7 @@ M.types = {
     BLOCK = 'expr:block',
     RAW_LUA = 'raw:lua-code',
     FIELD = 'ast:table-field',
+    PRAGMA = 'decl:pragma',
 }
 local ts = M.types
 
@@ -67,6 +68,13 @@ function M.mk_chunk(xs, retr)
     }
 
     return c
+end
+
+function M.mk_pragma(content)
+    return {
+        type = ts.PRAGMA,
+        content = content
+    }
 end
 
 function M.mk_assign(lhs, rhs)

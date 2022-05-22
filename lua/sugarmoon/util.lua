@@ -33,6 +33,14 @@ function M.tbl_reverse(tbl)
     return tbl
 end
 
+function M.rstrip(str)
+    assert(type(str) == 'string', "rstrip got an invalid type: " .. type(str))
+
+    local spaces = (lpeg.P ' ') ^ 1 * lpeg.P(-1)
+    local p = lpeg.Ct((spaces + lpeg.C(lpeg.P(1))) ^ 0) / function(t) return table.concat(t, '') end
+    return lpeg.match(p, str)
+end
+
 function M.tbl_tail(tbl)
     if #tbl < 2 then
         return nil

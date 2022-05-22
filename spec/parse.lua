@@ -21,7 +21,7 @@ end
 
 local function check_ast(input, ast, parse)
     if type(input) ~= 'table' then
-        input = {input}
+        input = { input }
     end
     parse = parse or parse_gram
     for _, inp in pairs(input) do
@@ -31,6 +31,9 @@ local function check_ast(input, ast, parse)
 end
 
 describe("parser tests", function()
+    it("should parse a language pragma", function()
+        check_ast("#[[ syntax:lambdas ]]#", ast.mk_pragma("syntax:lambdas"))
+    end)
     it("should parse a lua function with empty args", function()
         local input = "function x() end"
         local rs = lpeg.match(lpeg.Ct(parse.grammar), input)
@@ -461,14 +464,14 @@ local function x()
             assert.are.same(nil, lpeg.match(parse.grammar, input))
         end)
         it("should parse x => y end as a function with args x and body y", function()
-        local inputs = {
-            [[local f = x => return y end]],
-            [[local f = (x) => return y end]],
-            [[local f = x => y]],
-            [[local f = (x) => y]],
-        }
-        local expected = ast.mk_local(ast.mk_fn_named(ast.mk_raw_word('f'), {'x'}, ast.mk_chunk({}, ast.mk_raw_word 'y')))
-        check_ast(inputs, expected)
+            local inputs = {
+                [[local f = x => return y end]],
+                [[local f = (x) => return y end]],
+                [[local f = x => y]],
+                [[local f = (x) => y]],
+            }
+            local expected = ast.mk_local(ast.mk_fn_named(ast.mk_raw_word('f'), { 'x' }, ast.mk_chunk({}, ast.mk_raw_word 'y')))
+            check_ast(inputs, expected)
         end)
     end)
 end)
