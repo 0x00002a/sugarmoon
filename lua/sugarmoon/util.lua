@@ -41,6 +41,10 @@ function M.rstrip(str)
     return lpeg.match(p, str)
 end
 
+function M.starts_with(str, txt)
+    return lpeg.match(lpeg.P(txt) * lpeg.P(str:len() - txt:len()) * lpeg.P(-1), str) ~= nil
+end
+
 function M.tbl_tail(tbl)
     if #tbl < 2 then
         return nil
@@ -90,6 +94,15 @@ function M.to_str(v, indent)
             error("unhandled type: " .. type(v))
         end
     }
+end
+
+function M.tbl_find(tbl, pred)
+    for _, v in pairs(tbl) do
+        if (type(pred) == 'function' and pred(v)) or v == pred then
+            return v
+        end
+    end
+    return nil
 end
 
 function M.map(f, tbl)

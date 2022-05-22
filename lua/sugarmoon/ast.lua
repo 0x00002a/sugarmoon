@@ -16,6 +16,10 @@ M.types = {
     FIELD = 'ast:table-field',
     PRAGMA = 'decl:pragma',
 }
+M.lang_features = {
+    LAMBDAS = 'language:lambdas',
+}
+
 local ts = M.types
 
 function M.mk_name(ident_str)
@@ -155,6 +159,15 @@ function M.mk_fn_annon(args, body)
     }
 end
 
+function M.add_requires_feat(node, feat)
+    assert(type(node) == 'table' and node.type, "input must be an ast node but was: " .. util.to_str(node))
+    if not node.required_features then
+        node.required_features = {}
+    end
+    table.insert(node.required_features, feat)
+    return node
+end
+
 function M.mk_fn_named(name, ...)
     return M.mk_assign(M.mk_name(name), M.mk_fn_annon(...))
 end
@@ -180,6 +193,7 @@ function M.children(node)
         [ts.ASSIGN] = function()
             return { node.lhs, node.rhs }
         end,
+        [ts.LUA_FN] = key 'body',
         ["_"] = function()
             return nil
         end

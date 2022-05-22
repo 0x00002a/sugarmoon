@@ -114,6 +114,47 @@ local function mk_ctx()
     return ctx
 end
 
+local function is_lang_pragma(str)
+    return util.starts_with(str, 'language:')
+end
+
+local function find_nodes_with_invalid_feats(context_feats, root, out)
+    out = out or {}
+    local ts = types
+    if root.required_features then
+        for _, f in ipairs(root.required_features) do
+            if not context_feats[f] then
+                table.insert(out, { reason = 'missing language feature', node = root, feature = f })
+            end
+        end
+    end
+    util.switch(root.type) {
+        [ts.CHUNK] = function()
+            local ctx_feats = util.deep_copy(context_feats)
+            for _, s in pairs(root.stmts) do
+                if s.type == ts.PRAGMA and is_lang_pragma(s.content) then
+                    ctx_feats[s.content] = true
+                end
+            end
+            for _, s in pairs(root.stmts) do
+                find_nodes_with_invalid_feats(ctx_feats, s, out)
+            end
+            if root.retr then
+                find_nodes_with_invalid_feats(ctx_feats, root.retr, out)
+            end
+        end,
+        ["_"] = function()
+            local kids = ast.children(root)
+            if kids then
+                for _, c in pairs(ast.children(root)) do
+                    find_nodes_with_invalid_feats(context_feats, c, out)
+                end
+            end
+        end
+    }
+    return out
+end
+
 local function populate_exports(ast, ctx)
     assert(ctx)
 
@@ -130,7 +171,20 @@ local function populate_exports(ast, ctx)
     }
 end
 
-function M.to_lua(c)
+function M.find_invalid_nodes(root, compile_ctx)
+    compile_ctx = compile_ctx or {}
+    compile_ctx.global_feats = compile_ctx.global_feats or {}
+    local out = {}
+    find_nodes_with_invalid_feats(compile_ctx.global_feats or {}, root, out)
+    return out
+end
+
+function M.to_lua(c, compile_ctx)
+    compile_ctx = compile_ctx or {}
+    local invalid = M.find_invalid_nodes(c, compile_ctx)
+    if #invalid > 0 then
+        return nil, invalid
+    end
     local ctx = mk_ctx()
     populate_exports(c, ctx)
     c = ctx:wrap(c)

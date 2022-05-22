@@ -343,7 +343,7 @@ local extensions = {
             local implicit_retr = (V 'stat' * lbl(diag.SmallLambdaInvalidStat)) + Ct(V 'expv') / function(c) return ast.mk_chunk({}, c[1]) end
             return before
                 + Ct(Cg(multiarg + singlearg, 'args') * tkn '=>' * (V 'funcbody' + Cg(implicit_retr, 'body'))) / function(c)
-                    return to_ast_func(c)
+                    return ast.add_requires_feat(to_ast_func(c), ast.lang_features.LAMBDAS)
                 end
         end
     },

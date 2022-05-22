@@ -32,7 +32,12 @@ end
 
 describe("parser tests", function()
     it("should parse a language pragma", function()
-        check_ast("#[[ syntax:lambdas ]]#", ast.mk_pragma("syntax:lambdas"))
+        check_ast("#[[ language:lambdas ]]#", ast.mk_pragma("language:lambdas"))
+    end)
+
+    it("should require lambdas pragma for lambdas", function()
+        local rs = parse.parse("local x = () => y")
+        assert.are.same({ 'language:lambdas' }, rs.stmts[1].target.rhs.required_features)
     end)
     it("should parse a lua function with empty args", function()
         local input = "function x() end"
@@ -470,7 +475,10 @@ local function x()
                 [[local f = x => y]],
                 [[local f = (x) => y]],
             }
-            local expected = ast.mk_local(ast.mk_fn_named(ast.mk_raw_word('f'), { 'x' }, ast.mk_chunk({}, ast.mk_raw_word 'y')))
+            local expected = ast.mk_local(
+                ast.mk_assign(ast.mk_raw_word('f'), ast.add_requires_feat(
+                    ast.mk_fn_annon({ 'x' }, ast.mk_chunk({}, ast.mk_raw_word 'y')),
+                    ast.lang_features.LAMBDAS)))
             check_ast(inputs, expected)
         end)
     end)
