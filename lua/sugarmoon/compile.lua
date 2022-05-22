@@ -179,6 +179,17 @@ function M.find_invalid_nodes(root, compile_ctx)
     return out
 end
 
+function M.strip_locations(root)
+    root.location = nil
+    local kids = ast.children(root)
+    if kids then
+        for _, c in pairs(kids) do
+            M.strip_locations(kids)
+        end
+    end
+    return root
+end
+
 function M.to_lua(c, compile_ctx)
     compile_ctx = compile_ctx or {}
     local invalid = M.find_invalid_nodes(c, compile_ctx)
