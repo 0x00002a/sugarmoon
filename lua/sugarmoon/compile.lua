@@ -122,6 +122,7 @@ local function is_lang_pragma(str)
 end
 
 local function find_nodes_with_invalid_feats(context_feats, root, out)
+    assert(root, debug.traceback("root cannot be nil"))
     out = out or {}
     local ts = types
     if root.required_features then
