@@ -178,8 +178,12 @@ end
 function M.find_invalid_nodes(root, compile_ctx)
     compile_ctx = compile_ctx or {}
     compile_ctx.global_feats = compile_ctx.global_feats or {}
+    local global_lang_feats = {}
+    for _, f in ipairs(compile_ctx.global_feats) do
+        global_lang_feats[f] = true
+    end
     local out = {}
-    find_nodes_with_invalid_feats(compile_ctx.global_feats or {}, root, out)
+    find_nodes_with_invalid_feats(global_lang_feats, root, out)
     return out
 end
 
@@ -196,10 +200,6 @@ end
 
 function M.to_lua(c, compile_ctx)
     compile_ctx = compile_ctx or {}
-    local invalid = M.find_invalid_nodes(c, compile_ctx)
-    if #invalid > 0 then
-        return nil, invalid
-    end
     local ctx = mk_ctx()
     populate_exports(c, ctx)
     c = ctx:wrap(c)
