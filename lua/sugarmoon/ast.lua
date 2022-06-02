@@ -17,6 +17,7 @@ M.types = {
     PRAGMA = 'decl:pragma',
     IMPORT = 'decl:sm:import',
     STRING = 'expr:string',
+    IF_STMT = 'stmt:if',
 }
 M.lang_features = {
     LAMBDAS = 'language:lambdas',
@@ -53,6 +54,16 @@ function M.mk_export(names, stmts)
         type = ts.EXPORT,
         names = names,
         stmts = stmts,
+    }
+end
+
+function M.mk_if_stmt(cond, body, elifs, else_)
+    return {
+        type = ts.IF_STMT,
+        condition = cond,
+        body = body,
+        elseifs = elifs,
+        else_ = else_,
     }
 end
 

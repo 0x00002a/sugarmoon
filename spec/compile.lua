@@ -21,13 +21,5 @@ local y = () => x
                 nodes.stmts[1].target.rhs,
                 compile.find_invalid_nodes(nodes)[1].node)
         end)
-        it("doesn't find node if feat in the global feats", function()
-            local nodes = parse.parse([[
-local y = () => x
-            ]])
-            assert.are.same({}, compile.find_invalid_nodes(nodes, {
-                global_feats = ast.lang_features.LAMBDAS,
-            }))
-        end)
     end)
 end)

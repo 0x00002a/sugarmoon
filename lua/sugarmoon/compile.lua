@@ -5,6 +5,14 @@ local ast = require("sugarmoon.ast")
 local M = {}
 
 local function to_lua(c)
+    local function maybe_to_lua(input)
+        if not input then
+            return ""
+        else
+            return to_lua(input)
+        end
+    end
+
     local lookup = {
         [types.ASSIGN] = function()
             assert(c.lhs and c.rhs, debug.traceback("invalid assign: " .. util.to_str(c)))
@@ -18,6 +26,20 @@ local function to_lua(c)
                 return table.concat(context, '.')
             end
             return prefix .. c.base
+        end,
+        [types.IF_STMT] = function()
+            local elifs = {}
+            local function fmt_elsepost(e)
+                return '(' .. to_lua(e.condition) .. ') then ' .. maybe_to_lua(e.body) .. ' end'
+            end
+
+            for _, e in ipairs(c.elseifs or {}) do
+                table.insert(elifs, 'elseif ' .. fmt_elsepost(e))
+            end
+            if c.else_ then
+                table.insert(elifs, 'else ' .. fmt_elsepost(c.else_))
+            end
+            return "if " .. to_lua(c.condition) .. " then " .. maybe_to_lua(c.body) .. table.concat(elifs, '\n')
         end,
         [types.FIELD] = function()
             local function wrap_key(k)

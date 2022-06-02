@@ -25,7 +25,8 @@ local function check_ast(input, ast, parse)
     end
     parse = parse or parse_gram
     for _, inp in pairs(input) do
-        local out = parse(inp)
+        local out, err = parse(inp)
+        assert.are.same(nil, err)
         assert.are.same(ast, out)
     end
 end
@@ -122,7 +123,12 @@ elseif c then
 end
         ]]
         assert:set_parameter('TableFormatLevel', -1)
-        local expected = ast.mk_raw_lua(input)
+        local expected = ast.mk_if_stmt(ast.mk_raw_lua 'c.lhs', ast.mk_chunk({}, ast.mk_raw_word 'y'), {
+            {
+                condition = ast.mk_raw_word 'c',
+                body = ast.mk_chunk({}, ast.mk_raw_word 'x')
+            }
+        })
         local actual = parse_gram(input, false)
         assert.are.same(expected, actual)
 
@@ -221,14 +227,6 @@ end]]
         local input = [[
 for i = 1, #x do end]]
         local expected = ast.mk_raw_lua("for i = 1, #x do end")
-        local actual = parse_gram(input)
-        assert.are.same(expected, actual)
-
-    end)
-    it("should parse an if block", function()
-        local input = [[
-if x then y() end]]
-        local expected = ast.mk_raw_lua("if x then y() end")
         local actual = parse_gram(input)
         assert.are.same(expected, actual)
 
@@ -381,13 +379,13 @@ do
         local rs = parse_gram(input).inner
         assert.are.same(ast.mk_chunk(
             {
-            ast.mk_local(
-                ast.mk_assign(
-                    ast.mk_raw_word 'x',
-                    ast.mk_raw_lua 'y[2]'
+                ast.mk_local(
+                    ast.mk_assign(
+                        ast.mk_raw_word 'x',
+                        ast.mk_raw_lua 'y[2]'
+                    )
                 )
-            )
-        }
+            }
         ), rs)
     end)
     it("should parse operators", function()
@@ -441,6 +439,11 @@ local function x()
             ast.mk_fn_named('y')
         }, rs)
     end)
+
+    it("should parse an if stmt", function()
+        local input = "if x then y end"
+        check_ast(input, ast.mk_if_stmt(ast.mk_raw_lua 'x', ast.mk_raw_lua 'y'))
+    end)
     it("should parse a lua function", function()
         local input = "function x(test,t2) end"
         local rs = parse_gram(input)
@@ -476,6 +479,23 @@ local function x()
         it("should fail to parse a lambda with a chunk", function()
             local input = [[local f = x => do return y end]]
             assert.are.same(nil, lpeg.match(parse.grammar, input))
+        end)
+
+        it("should parse lambda then call", function()
+            local inputs = {
+                [[
+if y then
+    local f = x => y
+end
+                ]],
+            }
+            local expected = ast.mk_chunk({ ast.mk_local(
+                ast.mk_assign(ast.mk_raw_word('f'), ast.add_requires_feat(
+                    ast.mk_fn_annon({ 'x' }, ast.mk_chunk({}, ast.mk_raw_word 'y')),
+                    ast.lang_features.LAMBDAS))),
+            ast.mk_raw_lua "f()",
+            })
+            check_ast(inputs, expected)
         end)
         it("should parse x => y end as a function with args x and body y", function()
             local inputs = {

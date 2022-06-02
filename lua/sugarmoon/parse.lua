@@ -210,6 +210,13 @@ local function to_ast_string(c)
     return ast.mk_string(c.content, c.quotes)
 end
 
+local function to_ast_if_stmt(c)
+    if c.else_ == '' then
+        c.else_ = nil
+    end
+    return ast.mk_if_stmt(c.cond, c.body, c.elifs, c.else_)
+end
+
 local hspace = lpeg.space ^ 0
 
 local complete_grammer = {
@@ -221,10 +228,10 @@ local complete_grammer = {
     stat = Ct(kw 'do' * space * maybe(Cg(V 'block', 'inner')) * space * kw 'end') / to_ast_block
         + C(kw 'while' * space * V 'expv' * space * kw 'do' * space * maybe(V 'block') * space * kw 'end') / to_raw_lua
         + C(kw 'repeat' * space * maybe(V 'block') * space * kw 'until' * space * V 'expv') / to_raw_lua
-        + C(kw 'if' * space * V 'expv' * kw 'then' * maybe(V 'block')
-            * ((kw 'elseif' * space * V 'expv' * kw 'then' * space * maybe(V 'block')) ^ 0)
-            * maybe(kw 'else' * maybe(V 'block'))
-            * kw 'end') / to_raw_lua
+        + Ct(kw 'if' * space * Cg(V 'expv', 'cond') * kw 'then' * Cg(maybe(V 'block'), 'body')
+            * Cg(Ct(Ct(kw 'elseif' * space * Cg(V 'expv', 'condition') * kw 'then' * space * Cg(maybe(V 'block'), 'body')) ^ 0), 'elifs')
+            * Cg(maybe(kw 'else' * maybe(V 'block')), 'else_')
+            * kw 'end') / to_ast_if_stmt
         + C(kw 'for' * space * V 'name' * op '=' * V 'expv' * tkn ',' * sep_by(V 'expv', tkn ',') * space * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
         + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
         + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcpostfix') / to_ast_func_named)
