@@ -310,6 +310,8 @@ local complete_grammer = {
     prefixexp = V 'var' + V 'functioncall' + (tkn '(' + V 'expv' + tkn ')'),
     vardot = tkn '.' * V 'var' * maybe(V 'vardot'),
     var = (C(V 'tableindex') / to_raw_lua) + V 'name',
+    eol = P '\n',
+    eof = -P(1),
     field = Ct(
         (tkn '[' * Cg(V 'expv', 'lhs') * tkn ']' * tkn '=' * Cg(V 'expv', 'rhs'))
         + (Cg(V 'name', 'lhs') * tkn '=' * Cg(V 'expv', 'rhs'))
@@ -357,7 +359,8 @@ local extensions = {
                 return c.args
             end
             local singlearg = Ct(V 'name') / function(c) return ast.mk_arglist({ c[1].word }) end
-            local implicit_retr = (V 'stat' * lbl(diag.SmallLambdaInvalidStat)) + Ct(V 'expv') / function(c) return ast.mk_chunk({}, c[1]) end
+            local invalid_stmt_pre = V 'stat' * lbl(diag.SmallLambdaInvalidStat)
+            local implicit_retr = invalid_stmt_pre + (Ct(V 'expv') / function(c) return ast.mk_chunk({}, c[1]) end * (V 'eof' + V 'eol'))
             return before
                 + Ct(Cg(multiarg + singlearg, 'args') * tkn '=>' * (V 'funcbody' + Cg(implicit_retr, 'body'))) / function(c)
                     return ast.add_requires_feat(to_ast_func(c), ast.lang_features.LAMBDAS)
@@ -398,8 +401,9 @@ complete_grammer = apply_extensions(complete_grammer)
 M.grammar_raw = complete_grammer
 M.grammar = P(complete_grammer)
 
-function M.parse(code)
-    local m, e, pos = lpeg.match(M.grammar * space * (-P(1) + lbl "didn't consume all input"), code)
+function M.parse(code, grammar)
+    grammar = grammar or M.grammar
+    local m, e, pos = lpeg.match(grammar * space * (-P(1) + lbl "didn't consume all input"), code)
     if not m then
         return m, { what = diag[e] or e, where = pos, remaining = code:sub(pos) }
     else

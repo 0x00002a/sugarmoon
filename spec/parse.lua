@@ -6,9 +6,8 @@ local util = require("sugarmoon.util")
 
 require("busted.runner")()
 
-local pat = parse.patterns
 local function parse_pat(p, input)
-    return lpeg.match(lpeg.Ct(p), input)[1]
+    return parse.parse(input, lpeg.Ct(p))
 end
 
 local function parse_gram(input, debug)
@@ -16,7 +15,16 @@ local function parse_gram(input, debug)
         debug = false
     end
     local grammar = debug and parse.add_debug_trace(parse.grammar_raw) or parse.grammar
-    return parse_pat(lpeg.P(grammar), input).stmts[1]
+    local ok, err = parse_pat(lpeg.P(grammar), input)
+    if ok then
+        return ok[1].stmts[1]
+    else
+        return nil, err
+    end
+end
+
+local function parse_raw(input)
+    return parse.parse(input)
 end
 
 local function check_ast(input, ast, parse)
@@ -441,8 +449,9 @@ local function x()
     end)
 
     it("should parse an if stmt", function()
-        local input = "if x then y end"
-        check_ast(input, ast.mk_if_stmt(ast.mk_raw_lua 'x', ast.mk_raw_lua 'y'))
+        local input = "if x then return y end"
+        check_ast(input, ast.mk_if_stmt(ast.mk_raw_word 'x', ast.mk_chunk({},
+            ast.mk_raw_word 'y'), {}))
     end)
     it("should parse a lua function", function()
         local input = "function x(test,t2) end"
@@ -481,7 +490,22 @@ local function x()
             assert.are.same(nil, lpeg.match(parse.grammar, input))
         end)
 
-        it("should parse lambda then call", function()
+        it("should parse a lambda then call", function()
+            local inputs = {
+                [[
+local f = () => 2
+f()]]            ,
+            }
+            local expected = ast.mk_chunk {
+                ast.mk_local(
+                    ast.mk_assign(ast.mk_raw_word('f'), ast.add_requires_feat(
+                        ast.mk_fn_annon({}, ast.mk_chunk({}, ast.mk_raw_lua '2')),
+                        ast.lang_features.LAMBDAS))),
+                ast.mk_raw_lua 'f()'
+            }
+            check_ast(inputs, expected, parse_raw)
+        end)
+        it("should parse a lambda inside an if", function()
             local inputs = {
                 [[
 if y then
@@ -489,12 +513,11 @@ if y then
 end
                 ]],
             }
-            local expected = ast.mk_chunk({ ast.mk_local(
+            local expected = ast.mk_if_stmt(ast.mk_raw_word 'y', ast.mk_chunk { ast.mk_local(
                 ast.mk_assign(ast.mk_raw_word('f'), ast.add_requires_feat(
                     ast.mk_fn_annon({ 'x' }, ast.mk_chunk({}, ast.mk_raw_word 'y')),
                     ast.lang_features.LAMBDAS))),
-            ast.mk_raw_lua "f()",
-            })
+            }, {})
             check_ast(inputs, expected)
         end)
         it("should parse x => y end as a function with args x and body y", function()
