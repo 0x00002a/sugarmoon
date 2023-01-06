@@ -1,4 +1,6 @@
 local v2 = (x, y) => return z end
 
-
-
+if y ~= 3 then
+    local c = 3
+    local v1 = x => { return c }
+end

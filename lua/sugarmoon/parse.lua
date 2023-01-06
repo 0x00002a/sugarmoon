@@ -232,13 +232,13 @@ local hspace = lpeg.space ^ 0
 
 local complete_grammer = {
     'chunk';
-    chunk = to_located(Ct(
+    chunk = Ct(
         (
         (Ct(Cg(V "stat", 'stmt')) * maybe(tkn ";")) ^ 1 * space * Ct(maybe((Cg(V "laststat", 'retr')) * maybe(tkn ";")))
         )
-        + Ct(space * Cg(V 'laststat', 'retr') * maybe(tkn ';'))) / to_ast_chunk),
+        + Ct(space * Cg(V 'laststat', 'retr') * maybe(tkn ';'))) / to_ast_chunk,
     block = V "chunk",
-    stat = to_located(Ct(kw 'do' * space * maybe(Cg(V 'block', 'inner')) * space * kw 'end') / to_ast_block
+    stat = Ct(kw 'do' * space * maybe(Cg(V 'block', 'inner')) * space * kw 'end') / to_ast_block
         + C(kw 'while' * space * V 'expv' * space * kw 'do' * space * maybe(V 'block') * space * kw 'end') / to_raw_lua
         + C(kw 'repeat' * space * maybe(V 'block') * space * kw 'until' * space * V 'expv') / to_raw_lua
         + Ct(kw 'if' * space * Cg(V 'expv', 'cond') * kw 'then' * Cg(maybe(V 'block'), 'body')
@@ -256,7 +256,7 @@ local complete_grammer = {
         + V 'pragma'
         + Ct(kw 'local' * Cg(V 'namelist', 'lhs') * maybe(op '=' * Cg(V 'explist', 'rhs'))) / to_ast_assign_local
         + Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
-        + C(V 'functioncall') / to_raw_lua),
+        + C(V 'functioncall') / to_raw_lua,
 
     pragma = (P '#[[' * space * C((1 - P ']]#') ^ 0) * P ']]#') / to_ast_pragma,
     local_fn = Ct(kw 'local' * kw 'function' * Cg(V 'name', 'name') * V 'funcpostfix') / as_local(to_ast_func_named),
@@ -288,7 +288,7 @@ local complete_grammer = {
     index = (tkn '[' * V 'expv' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
     explist = Ct(sep_by(V 'expv', tkn ',')),
     string_literal = string_literal() / to_ast_string,
-    value = to_located(C(tkn 'nil') / to_raw_lua
+    value = C(tkn 'nil') / to_raw_lua
         + C(tkn 'false') / to_raw_lua
         + C(tkn 'true') / to_raw_lua
         + C(number) / to_raw_lua
@@ -298,10 +298,10 @@ local complete_grammer = {
         + C(V 'functioncall' * maybe(V 'vardot')) / to_raw_lua
         + V 'tableconstructor'
         + (V 'var' * maybe(V 'vardot'))
-        + C(tkn '(' * V 'expv' * tkn ')') / to_raw_lua),
+        + C(tkn '(' * V 'expv' * tkn ')') / to_raw_lua,
     space = space,
-    exp = to_located((V "unop" * V "space" * V "expv")
-        + C(V 'value' * V 'space' * V 'binopright') / to_raw_lua),
+    exp = (V "unop" * V "space" * V "expv")
+        + C(V 'value' * V 'space' * V 'binopright') / to_raw_lua,
     binopright = V 'binop' * V 'expv' * maybe(V 'binopright'),
     callprefix = (V 'tableindex' + V 'identifier'),
     name = identword - V 'keywords',
@@ -311,11 +311,12 @@ local complete_grammer = {
     functioncall = V 'callprefix' * V 'functioncall_rec',
     args = (hspace * P '(' * space * maybe(V 'explist') * tkn ')') + (space * V 'tableconstructor' * space) +
         (space * string_literal() * space),
-    function_ = to_located(Ct(kw 'function' * V 'funcpostfix') / to_ast_func),
+    function_ = Ct(kw 'function' * V 'funcpostfix') / to_ast_func,
     fn_args = mk_fn_args(),
     funcparams = Cg(to_located(V 'fn_args'), 'args'),
     funcpostfix = V 'funcparams' * space * V 'funcbody',
-    funcbody = maybe(Cg(to_located(V 'block'), 'body')) * kw 'end',
+    funcbodyinner = maybe(Cg(V 'block', 'body')),
+    funcbody = V 'funcbodyinner' * kw 'end',
     parlist = (V 'namelist' * maybe(P "," * space * P '...')) + (P "..."),
     tableconstructor = Ct(tkn '{' * Cg(maybe(V 'fieldlist'), "fields") * tkn '}') / to_ast_tbl,
     fieldlist = Ct(space / 0 * V 'field' * (space / 0 * V 'fieldsep' / 0 * space / 0 * V 'field') ^ 0) *
@@ -373,7 +374,18 @@ local diag = {
     SmallLambdaInvalidStat = 'statement not allowed for lambda with implicit return',
 }
 
+local function patch_located(p)
+    return to_located(p)
+end
+
 local extensions = {
+    braceblocks = {
+        funcbody = function(before)
+            local braces = tkn '{' * V 'funcbodyinner' * tkn "}"
+            return braces + before
+        end,
+
+    },
     lambdas = {
         function_ = function(before)
             local multiarg = Ct(V 'funcparams') / function(c)
@@ -398,6 +410,14 @@ local extensions = {
             end
             return imp + before
         end,
+    },
+
+    locations = {
+        chunk = to_located,
+        stat = to_located,
+        value = to_located,
+        exp = to_located,
+        function_ = to_located,
     },
 }
 
