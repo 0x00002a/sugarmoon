@@ -222,17 +222,23 @@ local hspace = lpeg.space ^ 0
 local complete_grammer = {
     'chunk';
     chunk = Ct(
-        ((Ct(Cg(V "stat", 'stmt')) * maybe(tkn ";")) ^ 1 * space * Ct(maybe((Cg(V "laststat", 'retr')) * maybe(tkn ";"))))
+        (
+        (Ct(Cg(V "stat", 'stmt')) * maybe(tkn ";")) ^ 1 * space * Ct(maybe((Cg(V "laststat", 'retr')) * maybe(tkn ";")))
+        )
         + Ct(space * Cg(V 'laststat', 'retr') * maybe(tkn ';'))) / to_ast_chunk,
     block = V "chunk",
     stat = Ct(kw 'do' * space * maybe(Cg(V 'block', 'inner')) * space * kw 'end') / to_ast_block
         + C(kw 'while' * space * V 'expv' * space * kw 'do' * space * maybe(V 'block') * space * kw 'end') / to_raw_lua
         + C(kw 'repeat' * space * maybe(V 'block') * space * kw 'until' * space * V 'expv') / to_raw_lua
         + Ct(kw 'if' * space * Cg(V 'expv', 'cond') * kw 'then' * Cg(maybe(V 'block'), 'body')
-            * Cg(Ct(Ct(kw 'elseif' * space * Cg(V 'expv', 'condition') * kw 'then' * space * Cg(maybe(V 'block'), 'body')) ^ 0), 'elifs')
+            *
+            Cg(Ct(Ct(kw 'elseif' * space * Cg(V 'expv', 'condition') * kw 'then' * space * Cg(maybe(V 'block'), 'body'))
+                ^ 0), 'elifs')
             * Cg(maybe(kw 'else' * maybe(V 'block')), 'else_')
             * kw 'end') / to_ast_if_stmt
-        + C(kw 'for' * space * V 'name' * op '=' * V 'expv' * tkn ',' * sep_by(V 'expv', tkn ',') * space * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
+        +
+        C(kw 'for' * space * V 'name' * op '=' * V 'expv' * tkn ',' * sep_by(V 'expv', tkn ',') * space * kw 'do' *
+            maybe(V 'block') * kw 'end') / to_raw_lua
         + C(kw 'for' * V 'namelist' * kw 'in' * V 'explist' * kw 'do' * maybe(V 'block') * kw 'end') / to_raw_lua
         + (Ct(kw 'function' * Cg(V 'funcname', 'name') * space * V 'funcpostfix') / to_ast_func_named)
         + V 'local_fn'
@@ -292,14 +298,16 @@ local complete_grammer = {
     call = (V 'args') + (P ':' * hspace * V 'name' * hspace * V 'args'),
     functioncall_rec = V 'call' * maybe(V 'functioncall_rec'),
     functioncall = V 'callprefix' * V 'functioncall_rec',
-    args = (hspace * P '(' * space * maybe(V 'explist') * tkn ')') + (space * V 'tableconstructor' * space) + (space * string_literal() * space),
+    args = (hspace * P '(' * space * maybe(V 'explist') * tkn ')') + (space * V 'tableconstructor' * space) +
+        (space * string_literal() * space),
     function_ = Ct(kw 'function' * V 'funcpostfix') / to_ast_func,
     funcparams = Cg(fn_args, 'args'),
     funcpostfix = V 'funcparams' * space * V 'funcbody',
     funcbody = maybe(Cg(V 'block', 'body')) * kw 'end',
     parlist = (V 'namelist' * maybe(P "," * space * P '...')) + (P "..."),
     tableconstructor = Ct(tkn '{' * Cg(maybe(V 'fieldlist'), "fields") * tkn '}') / to_ast_tbl,
-    fieldlist = Ct(space / 0 * V 'field' * (space / 0 * V 'fieldsep' / 0 * space / 0 * V 'field') ^ 0) * maybe(V 'fieldsep'),
+    fieldlist = Ct(space / 0 * V 'field' * (space / 0 * V 'fieldsep' / 0 * space / 0 * V 'field') ^ 0) *
+        maybe(V 'fieldsep'),
     fieldsep = tkn ',' + tkn ';',
     binop = binop(),
     identifier = ident_name - V 'keywords',
@@ -360,9 +368,12 @@ local extensions = {
             end
             local singlearg = Ct(V 'name') / function(c) return ast.mk_arglist({ c[1].word }) end
             local invalid_stmt_pre = V 'stat' * lbl(diag.SmallLambdaInvalidStat)
-            local implicit_retr = invalid_stmt_pre + (Ct(V 'expv') / function(c) return ast.mk_chunk({}, c[1]) end * (V 'eof' + V 'eol'))
+            local implicit_retr = invalid_stmt_pre +
+                (Ct(V 'expv') / function(c) return ast.mk_chunk({}, c[1]) end * (V 'eof' + V 'eol'))
             return before
-                + Ct(Cg(multiarg + singlearg, 'args') * tkn '=>' * (V 'funcbody' + Cg(implicit_retr, 'body'))) / function(c)
+                +
+                Ct(Cg(multiarg + singlearg, 'args') * tkn '=>' * (V 'funcbody' + Cg(implicit_retr, 'body'))) /
+                function(c)
                     return ast.add_requires_feat(to_ast_func(c), ast.lang_features.LAMBDAS)
                 end
         end
@@ -401,11 +412,56 @@ complete_grammer = apply_extensions(complete_grammer)
 M.grammar_raw = complete_grammer
 M.grammar = P(complete_grammer)
 
+---@class pos
+---@field row number
+---@field col number
+
+---@param input string: input that offset is into
+---@param offset number
+---@return pos
+function M.offset_to_location(input, offset)
+    local pos = { row = 1, col = 0 }
+    for n = 1, offset do
+        local ch = input:sub(n, n)
+        if ch == '\n' or ch == '\n\r' then
+            pos.row = pos.row + 1
+            pos.col = 0
+        else
+            pos.col = pos.col + 1
+        end
+    end
+    return pos
+end
+
+---@param err parse_error
+---@return string
+function M.render_err(err)
+    local pos = M.offset_to_location(err.input, err.where)
+    local function render_context()
+        local line = util.str_split(err.input, "\n")[pos.row]
+        local location_ctx = tostring(pos.row) .. ":" .. tostring(pos.col)
+        local line_prefix = "  "
+        local marker = string.rep(" ", location_ctx:len() + 1 + pos.col - 2) ..
+            "~~" .. "^" .. "~~"
+        return location_ctx .. line_prefix .. line .. '\n' .. marker
+    end
+
+    return err.what .. "\n" .. render_context()
+end
+
+---@class parse_error
+---@field what string
+---@field where number
+---@field input string
+
+---@param code string
+---@param grammar any|nil
+---@return table, parse_error|nil
 function M.parse(code, grammar)
     grammar = grammar or M.grammar
     local m, e, pos = lpeg.match(grammar * space * (-P(1) + lbl "didn't consume all input"), code)
     if not m then
-        return m, { what = diag[e] or e, where = pos, remaining = code:sub(pos) }
+        return m, { what = diag[e] or e, where = pos, input = code }
     else
         return m
     end

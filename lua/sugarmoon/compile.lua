@@ -38,6 +38,8 @@ local function to_lua(c)
             end
             if c.else_ then
                 table.insert(elifs, 'else ' .. fmt_elsepost(c.else_))
+            else
+                table.insert(elifs, ' end')
             end
             return "if " .. to_lua(c.condition) .. " then " .. maybe_to_lua(c.body) .. table.concat(elifs, '\n')
         end,
