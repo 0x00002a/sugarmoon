@@ -1,8 +1,33 @@
 local types = require("sugarmoon.ast").types
 local util = require("sugarmoon.util")
 local ast = require("sugarmoon.ast")
+local parse = require("sugarmoon.parse")
 
 local M = {}
+
+---@class compile_err
+---@field what string
+---@field node ast_node|nil
+---@field trace string
+
+local function assert_field(node, field)
+    assert(node[field], { what = tostring(field) .. " was nil", node = node, trace = debug.traceback() })
+end
+
+---@param input string
+---@param e compile_err
+function M.render_err(input, e)
+    local out = e.what
+    if e.node ~= nil and e.node.range ~= nil then
+        local start, fin = e.node.range.start, e.node.range.finish
+        local spos = parse.offset_to_location(input, start)
+        out = out ..
+            " (" ..
+            tostring(spos.row) ..
+            ":" .. tostring(spos.col) .. ") " .. "[" .. input:sub(e.node.range.start, e.node.range.finish - 1) .. "]"
+    end
+    return out .. "\n" .. e.trace
+end
 
 ---@param c ast_node
 ---@return string
@@ -34,7 +59,7 @@ local function to_lua(c)
         [types.IF_STMT] = function()
             local elifs = {}
             local function fmt_elsepost(e)
-                assert(e.condition ~= nil, "condition must not be nil: " .. util.to_str(c))
+                assert_field(e, "condition")
                 return '(' .. to_lua(e.condition) .. ') then ' .. maybe_to_lua(e.body) .. ' end'
             end
 
@@ -103,7 +128,7 @@ local function to_lua(c)
             error(debug.traceback("invalid ast node: " .. util.to_str(c)))
         end
     }
-    assert(type(c) == 'table', debug.traceback("node has invalid datatype: " .. type(c) .. ' (' .. util.to_str(c) .. ')'))
+    assert(type(c) == 'table', { what = "not an ast node", node = c, trace = debug.traceback() })
     if not next(c) then
         return ""
     end
@@ -227,6 +252,7 @@ function M.strip_locations(root)
     return root
 end
 
+---@param c ast_node
 function M.to_lua(c, compile_ctx)
     compile_ctx = compile_ctx or {}
     local ctx = mk_ctx()

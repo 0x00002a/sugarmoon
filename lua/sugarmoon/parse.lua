@@ -472,9 +472,7 @@ end
 ---@return table, parse_error|nil
 function M.parse(code, grammar)
     grammar = grammar or M.grammar
-    --local m, e, pos = lpeg.match(grammar * space * (-P(1) + lbl "didn't consume all input"), code)
-    local m, e, pos = lpeg.match(grammar, code)
-    print("m: ", util.to_str(m))
+    local m, e, pos = lpeg.match(grammar * space * (-P(1) + lbl "didn't consume all input"), code)
     if not m then
         return m, { what = diag[e] or e, where = pos, input = code }
     else
