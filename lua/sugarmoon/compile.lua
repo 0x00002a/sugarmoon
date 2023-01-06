@@ -34,6 +34,7 @@ local function to_lua(c)
         [types.IF_STMT] = function()
             local elifs = {}
             local function fmt_elsepost(e)
+                assert(e.condition ~= nil, "condition must not be nil: " .. util.to_str(c))
                 return '(' .. to_lua(e.condition) .. ') then ' .. maybe_to_lua(e.body) .. ' end'
             end
 

@@ -13,6 +13,7 @@ local Ct = lpeg.Ct
 local Cg = lpeg.Cg
 local Cc = lpeg.Cc
 local lbl = lpeg.T
+local Cp = lpeg.Cp
 
 local M = {}
 
@@ -325,6 +326,17 @@ local complete_grammer = {
         + (Cg(V 'name', 'lhs') * tkn '=' * Cg(V 'expv', 'rhs'))
         + (Cg(V 'expv', 'value'))) / to_ast_field,
 }
+---@param grammar table
+---@return table
+function M.add_locations(grammar)
+    grammar = util.deep_copy(grammar)
+    for k, p in pairs(grammar) do
+        grammar[k] = Ct(Cg(lpeg.Cp(), 'pstart') + Cg(p, 'parse_rs') + Cg(lpeg.Cp(), 'pend')) / function(caps)
+            return ast.located(caps.parse_rs, caps.pstart, caps.pend)
+        end
+    end
+    return grammar
+end
 
 function M.add_debug_trace(grammar)
     grammar = util.deep_copy(grammar)
@@ -407,7 +419,7 @@ local function apply_extensions(orig)
     return orig
 end
 
-complete_grammer = apply_extensions(complete_grammer)
+complete_grammer = M.add_locations(apply_extensions(complete_grammer))
 
 M.grammar_raw = complete_grammer
 M.grammar = P(complete_grammer)

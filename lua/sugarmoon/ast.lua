@@ -26,6 +26,7 @@ M.lang_features = {
 
 ---@class ast_node
 ---@field type ast_type
+---@field range { start: number, finish: number } |nil
 
 
 local ts = M.types
@@ -208,8 +209,12 @@ function M.mk_string(content, quotes)
     }
 end
 
-function M.located(node, pos)
-    node.location = pos
+---@param node ast_node
+---@param start number
+---@param finish number
+---@return ast_node
+function M.located(node, start, finish)
+    node.range = { start = start, finish = finish }
     return node
 end
 
