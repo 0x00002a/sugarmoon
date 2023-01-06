@@ -10,6 +10,17 @@ local function parse_pat(p, input)
     return parse.parse(input, lpeg.Ct(p))
 end
 
+local function strip_locations(ast)
+    for k, v in pairs(ast) do
+        if k == 'range' then
+            ast[k] = nil
+        elseif type(v) == 'table' then
+            strip_locations(v)
+        end
+    end
+    return ast
+end
+
 local function parse_gram(input, debug)
     if not debug then
         debug = false
@@ -17,7 +28,7 @@ local function parse_gram(input, debug)
     local grammar = debug and parse.add_debug_trace(parse.grammar_raw) or parse.grammar
     local ok, err = parse_pat(lpeg.P(grammar), input)
     if ok then
-        return ok[1].stmts[1]
+        return strip_locations(ok[1].stmts[1])
     else
         return nil, err
     end
@@ -35,6 +46,7 @@ local function check_ast(input, ast, parse)
     for _, inp in pairs(input) do
         local out, err = parse(inp)
         assert.are.same(nil, err)
+        strip_locations(out)
         assert.are.same(ast, out)
     end
 end
@@ -55,7 +67,7 @@ describe("parser tests", function()
     it("should parse a lua function with empty args", function()
         local input = "function x() end"
         local rs = lpeg.match(lpeg.Ct(parse.grammar), input)
-        assert.are.same(ast.mk_fn_named('x'), rs[1].stmts[1])
+        assert.are.same(ast.mk_fn_named('x'), parse_gram(input))
     end)
 
     it("should parse a string literal", function()
@@ -96,7 +108,9 @@ end
         local rs, e = parse.parse(input)
         assert.are.same(nil, e)
         rs = rs.stmts[3]
-        assert.are.same(ast.mk_fn_named('M.x', { 'v' }, ast.mk_chunk(ast.mk_local(ast.mk_assign(ast.mk_raw_word 'v', ast.mk_raw_lua '2')))), rs)
+        strip_locations(rs)
+        assert.are.same(ast.mk_fn_named('M.x', { 'v' },
+            ast.mk_chunk(ast.mk_local(ast.mk_assign(ast.mk_raw_word 'v', ast.mk_raw_lua '2')))), rs)
     end)
 
     it("should parse assignment with tables on both sides", function()
@@ -441,7 +455,7 @@ local function x()
     end)
     it("should parse multiple functions", function()
         local input = "function x() end\nfunction y() end"
-        local rs = parse.parse(input).stmts
+        local rs = strip_locations(parse.parse(input).stmts)
         assert.are.same({
             ast.mk_fn_named('x'),
             ast.mk_fn_named('y')
@@ -457,6 +471,14 @@ local function x()
         local input = "function x(test,t2) end"
         local rs = parse_gram(input)
         assert.are.same(ast.mk_fn_named('x', { "test", "t2" }), rs)
+    end)
+    describe("function parse", function()
+        it("with local function in body", function()
+            local input = "function x() local function y() end local h = 5 return 3 end"
+            assert.are.same(ast.mk_fn_named('x', {},
+                ast.mk_chunk({ ast.mk_local(ast.mk_fn_named('y')), ast.mk_local(ast.mk_assign('h', 5)) })),
+                parse_gram(input))
+        end)
     end)
     describe("assignment", function()
         it("should match x = y", function()
