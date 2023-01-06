@@ -4,6 +4,8 @@ local ast = require("sugarmoon.ast")
 
 local M = {}
 
+---@param c ast_node
+---@return string
 local function to_lua(c)
     local function maybe_to_lua(input)
         if not input then
@@ -13,6 +15,8 @@ local function to_lua(c)
         end
     end
 
+    ---@type { [ast_type]: (fun(): string)|string }
+    ---@diagnostic disable: undefined-field
     local lookup = {
         [types.ASSIGN] = function()
             assert(c.lhs and c.rhs, debug.traceback("invalid assign: " .. util.to_str(c)))

@@ -3,27 +3,37 @@ local M = {}
 
 
 
+---@generic T
+---@generic C
+---@param v T
+---@return fun(lookup: {[T]: (fun(): C)|C}): C
 function M.switch(v)
     return function(lookup)
         local k = lookup[v]
         if k == nil then
             return lookup['_']()
-        else
+        elseif type(k) == 'function' then
             return k()
+        else
+            return k
         end
     end
 end
 
+---@param s string
+---@param ch string
+---@return string[]
 function M.str_split(s, ch)
     local sep = lpeg.P(ch)
     local el = lpeg.C((1 - sep) ^ 0)
     return lpeg.match(lpeg.Ct(el * (sep * el) ^ 0), s)
 end
 
+---@generic T
+---@param tbl T[]
+---@return T[]
 function M.tbl_reverse(tbl)
-    if not tbl then
-        return nil
-    end
+    assert(tbl ~= nil)
     local len = #tbl
     for i = 1, math.floor(#tbl / 2) do
         local v = tbl[i]
@@ -70,6 +80,9 @@ function M.deep_copy(v)
     }
 end
 
+---@param v function|number|string|nil|table
+---@param indent number|nil
+---@return string
 function M.to_str(v, indent)
     indent = indent or 0
     local next_ids = indent + 4
@@ -106,10 +119,13 @@ function M.tbl_find(tbl, pred)
     return nil
 end
 
+---@generic T
+---@generic C
+---@param f fun(t: T): C
+---@param tbl T[]
+---@return C[]
 function M.map(f, tbl)
-    if not tbl then
-        return nil
-    end
+    assert(tbl ~= nil)
     local o = {}
     for _, v in pairs(tbl) do
         local rs = f(v)

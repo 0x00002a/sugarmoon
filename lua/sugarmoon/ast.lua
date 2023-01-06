@@ -1,6 +1,7 @@
 local util = require("sugarmoon.util")
 local M = {}
 
+---@enum ast_type
 M.types = {
     LUA_TABLE = 'lua:table',
     IDENT_NAME = 'ident:name',
@@ -23,8 +24,14 @@ M.lang_features = {
     LAMBDAS = 'language:lambdas',
 }
 
+---@class ast_node
+---@field type ast_type
+
+
 local ts = M.types
 
+---@param ident_str string
+---@return ast_node
 function M.mk_name(ident_str)
     if type(ident_str) == 'table' and not ident_str.parts then
         assert(ident_str.type == M.types.IDENT_NAME or ident_str.type == M.types.RAW_WORD)
@@ -87,6 +94,7 @@ function M.mk_chunk(xs, retr)
     return c
 end
 
+---@return ast_node
 function M.mk_pragma(content)
     return {
         type = ts.PRAGMA,
