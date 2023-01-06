@@ -94,6 +94,16 @@ end
 
 local fn_args = mk_fn_args()
 
+local function to_located(p)
+    return Ct(Cg(Cp(), 'pstart') * Cg(p, 'parse_rs') * Cg(Cp(), 'pend')) / function(caps)
+        if type(caps.parse_rs) == 'table' and caps.parse_rs.type ~= nil then
+            return ast.located(caps.parse_rs, caps.pstart, caps.pend)
+        else
+            return caps.parse_rs
+        end
+    end
+end
+
 local function string_literal()
 
     local longstring = P { -- from Roberto Ierusalimschy's lpeg examples
@@ -222,13 +232,13 @@ local hspace = lpeg.space ^ 0
 
 local complete_grammer = {
     'chunk';
-    chunk = Ct(
+    chunk = to_located(Ct(
         (
         (Ct(Cg(V "stat", 'stmt')) * maybe(tkn ";")) ^ 1 * space * Ct(maybe((Cg(V "laststat", 'retr')) * maybe(tkn ";")))
         )
-        + Ct(space * Cg(V 'laststat', 'retr') * maybe(tkn ';'))) / to_ast_chunk,
+        + Ct(space * Cg(V 'laststat', 'retr') * maybe(tkn ';'))) / to_ast_chunk),
     block = V "chunk",
-    stat = Ct(kw 'do' * space * maybe(Cg(V 'block', 'inner')) * space * kw 'end') / to_ast_block
+    stat = to_located(Ct(kw 'do' * space * maybe(Cg(V 'block', 'inner')) * space * kw 'end') / to_ast_block
         + C(kw 'while' * space * V 'expv' * space * kw 'do' * space * maybe(V 'block') * space * kw 'end') / to_raw_lua
         + C(kw 'repeat' * space * maybe(V 'block') * space * kw 'until' * space * V 'expv') / to_raw_lua
         + Ct(kw 'if' * space * Cg(V 'expv', 'cond') * kw 'then' * Cg(maybe(V 'block'), 'body')
@@ -246,7 +256,7 @@ local complete_grammer = {
         + V 'pragma'
         + Ct(kw 'local' * Cg(V 'namelist', 'lhs') * maybe(op '=' * Cg(V 'explist', 'rhs'))) / to_ast_assign_local
         + Ct(Cg(V 'varlist', 'lhs') * tkn '=' * Cg(V 'explist', 'rhs')) / to_ast_assign
-        + C(V 'functioncall') / to_raw_lua,
+        + C(V 'functioncall') / to_raw_lua),
 
     pragma = (P '#[[' * space * C((1 - P ']]#') ^ 0) * P ']]#') / to_ast_pragma,
     local_fn = Ct(kw 'local' * kw 'function' * Cg(V 'name', 'name') * V 'funcpostfix') / as_local(to_ast_func_named),
@@ -278,7 +288,7 @@ local complete_grammer = {
     index = (tkn '[' * V 'expv' * tkn ']') + (P '.' * space * V 'name' * space * V 'args'),
     explist = Ct(sep_by(V 'expv', tkn ',')),
     string_literal = string_literal() / to_ast_string,
-    value = C(tkn 'nil') / to_raw_lua
+    value = to_located(C(tkn 'nil') / to_raw_lua
         + C(tkn 'false') / to_raw_lua
         + C(tkn 'true') / to_raw_lua
         + C(number) / to_raw_lua
@@ -288,10 +298,10 @@ local complete_grammer = {
         + C(V 'functioncall' * maybe(V 'vardot')) / to_raw_lua
         + V 'tableconstructor'
         + (V 'var' * maybe(V 'vardot'))
-        + C(tkn '(' * V 'expv' * tkn ')') / to_raw_lua,
+        + C(tkn '(' * V 'expv' * tkn ')') / to_raw_lua),
     space = space,
-    exp = (V "unop" * V "space" * V "expv")
-        + C(V 'value' * V 'space' * V 'binopright') / to_raw_lua,
+    exp = to_located((V "unop" * V "space" * V "expv")
+        + C(V 'value' * V 'space' * V 'binopright') / to_raw_lua),
     binopright = V 'binop' * V 'expv' * maybe(V 'binopright'),
     callprefix = (V 'tableindex' + V 'identifier'),
     name = identword - V 'keywords',
@@ -301,10 +311,11 @@ local complete_grammer = {
     functioncall = V 'callprefix' * V 'functioncall_rec',
     args = (hspace * P '(' * space * maybe(V 'explist') * tkn ')') + (space * V 'tableconstructor' * space) +
         (space * string_literal() * space),
-    function_ = Ct(kw 'function' * V 'funcpostfix') / to_ast_func,
-    funcparams = Cg(fn_args, 'args'),
+    function_ = to_located(Ct(kw 'function' * V 'funcpostfix') / to_ast_func),
+    fn_args = mk_fn_args(),
+    funcparams = Cg(to_located(V 'fn_args'), 'args'),
     funcpostfix = V 'funcparams' * space * V 'funcbody',
-    funcbody = maybe(Cg(V 'block', 'body')) * kw 'end',
+    funcbody = maybe(Cg(to_located(V 'block'), 'body')) * kw 'end',
     parlist = (V 'namelist' * maybe(P "," * space * P '...')) + (P "..."),
     tableconstructor = Ct(tkn '{' * Cg(maybe(V 'fieldlist'), "fields") * tkn '}') / to_ast_tbl,
     fieldlist = Ct(space / 0 * V 'field' * (space / 0 * V 'fieldsep' / 0 * space / 0 * V 'field') ^ 0) *
@@ -326,17 +337,7 @@ local complete_grammer = {
         + (Cg(V 'name', 'lhs') * tkn '=' * Cg(V 'expv', 'rhs'))
         + (Cg(V 'expv', 'value'))) / to_ast_field,
 }
----@param grammar table
----@return table
-function M.add_locations(grammar)
-    grammar = util.deep_copy(grammar)
-    for k, p in pairs(grammar) do
-        grammar[k] = Ct(Cg(lpeg.Cp(), 'pstart') + Cg(p, 'parse_rs') + Cg(lpeg.Cp(), 'pend')) / function(caps)
-            return ast.located(caps.parse_rs, caps.pstart, caps.pend)
-        end
-    end
-    return grammar
-end
+
 
 function M.add_debug_trace(grammar)
     grammar = util.deep_copy(grammar)
@@ -419,7 +420,7 @@ local function apply_extensions(orig)
     return orig
 end
 
-complete_grammer = M.add_locations(apply_extensions(complete_grammer))
+complete_grammer = apply_extensions(complete_grammer)
 
 M.grammar_raw = complete_grammer
 M.grammar = P(complete_grammer)
@@ -471,7 +472,9 @@ end
 ---@return table, parse_error|nil
 function M.parse(code, grammar)
     grammar = grammar or M.grammar
-    local m, e, pos = lpeg.match(grammar * space * (-P(1) + lbl "didn't consume all input"), code)
+    --local m, e, pos = lpeg.match(grammar * space * (-P(1) + lbl "didn't consume all input"), code)
+    local m, e, pos = lpeg.match(grammar, code)
+    print("m: ", util.to_str(m))
     if not m then
         return m, { what = diag[e] or e, where = pos, input = code }
     else
