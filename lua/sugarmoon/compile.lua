@@ -59,8 +59,11 @@ local function to_lua(c)
         [types.IF_STMT] = function()
             local elifs = {}
             local function fmt_elsepost(e)
-                assert_field(e, "condition")
-                return '(' .. to_lua(e.condition) .. ') then ' .. maybe_to_lua(e.body) .. ' end'
+                if e.condition then
+                    return '(' .. to_lua(e.condition) .. ') then ' .. maybe_to_lua(e.body) .. ' end'
+                else
+                    return maybe_to_lua(e.body) .. ' end'
+                end
             end
 
             for _, e in ipairs(c.elseifs or {}) do
