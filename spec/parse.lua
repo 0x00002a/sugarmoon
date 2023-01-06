@@ -476,7 +476,9 @@ local function x()
         it("with local function in body", function()
             local input = "function x() local function y() end local h = 5 return 3 end"
             assert.are.same(ast.mk_fn_named('x', {},
-                ast.mk_chunk({ ast.mk_local(ast.mk_fn_named('y')), ast.mk_local(ast.mk_assign('h', 5)) })),
+                ast.mk_chunk({ ast.mk_local(ast.mk_fn_named(ast.mk_raw_word 'y')),
+                    ast.mk_local(ast.mk_assign(ast.mk_raw_word 'h', ast.mk_raw_lua '5')) }, ast.mk_raw_lua '3'))
+                ,
                 parse_gram(input))
         end)
     end)
